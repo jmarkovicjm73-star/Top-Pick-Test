@@ -289,6 +289,7 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 .title-scr:before{content:'';position:absolute;inset:-50%;background:repeating-conic-gradient(from 0deg,rgba(247,168,27,.07) 0deg 8deg,transparent 8deg 24deg);animation:spin 40s linear infinite}
 .t-logo{position:relative;width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:84px;background:radial-gradient(circle at 35% 30%,#ffb347,#f7a81b 45%,#b45309);box-shadow:0 0 60px rgba(247,168,27,.45),inset -10px -14px 24px rgba(0,0,0,.25);animation:float 3s ease-in-out infinite;overflow:hidden}
 .t-logo img{width:100%;height:100%;object-fit:contain}
+.t-logo.img{background:none;box-shadow:none;border-radius:0;overflow:visible}
 @keyframes float{50%{transform:translateY(-10px)}}
 .t-name{position:relative;margin-top:26px;font-size:46px;font-weight:900;letter-spacing:.08em;background:linear-gradient(180deg,#fff,#fde68a 60%,#f7a81b);-webkit-background-clip:text;background-clip:text;color:transparent}
 .t-sub{position:relative;font-size:12px;font-weight:800;letter-spacing:.3em;color:var(--sub);margin-top:6px}
@@ -618,7 +619,7 @@ function renderHeader(){
 /* ═════════════ START ═════════════ */
 /* ═════════════ TITEL & HAUPTMENÜ ═════════════ */
 function screen(n){UI.screen=n;window.scrollTo(0,0);render();if(RM)return;const a=$('app');a.classList.remove('enter');void a.offsetWidth;a.classList.add('enter');clearTimeout(enterT);enterT=setTimeout(()=>a.classList.remove('enter'),650);}
-function logoHTML(){return `<div class="t-logo">${LOGO_IMG?`<img src="${LOGO_IMG}" alt="TOP PICK">`:'🏀'}</div>`;}
+function logoHTML(){return `<div class="t-logo${LOGO_IMG?' img':''}">${LOGO_IMG?`<img src="${LOGO_IMG}" alt="TOP PICK">`:'🏀'}</div>`;}
 function vTitle(){app(`<div class="title-scr" onclick="screen('menu')">${logoHTML()}<div class="t-name">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div><div class="t-tap">TIPPEN ZUM SPIELEN</div></div>`);}
 function vMenu(){
   const sv_=UI.saved;

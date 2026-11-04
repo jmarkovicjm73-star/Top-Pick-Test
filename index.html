@@ -290,6 +290,10 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 .t-logo{position:relative;width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:84px;background:radial-gradient(circle at 35% 30%,#ffb347,#f7a81b 45%,#b45309);box-shadow:0 0 60px rgba(247,168,27,.45),inset -10px -14px 24px rgba(0,0,0,.25);animation:float 3s ease-in-out infinite;overflow:hidden}
 .t-logo img{width:100%;height:100%;object-fit:contain}
 .t-logo.img{background:none;box-shadow:none;border-radius:0;overflow:visible}
+.t-song{position:absolute;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom));font-size:12px;font-weight:700;color:var(--sub);padding:0 20px}
+.wl{font-size:120px;font-weight:900;line-height:1;margin:2px 0 4px;animation:wlpop .5s cubic-bezier(.3,1.6,.5,1)}.wl.w{color:var(--ok);text-shadow:0 0 34px rgba(52,211,153,.5)}.wl.l{color:var(--bad);text-shadow:0 0 34px rgba(251,113,133,.5)}
+@keyframes wlpop{from{transform:scale(.4);opacity:0}}
+.rng{width:100%;accent-color:var(--acc);margin:8px 0 14px}
 @keyframes float{50%{transform:translateY(-10px)}}
 .t-name{position:relative;margin-top:26px;font-size:46px;font-weight:900;letter-spacing:.08em;background:linear-gradient(180deg,#fff,#fde68a 60%,#f7a81b);-webkit-background-clip:text;background-clip:text;color:transparent}
 .t-sub{position:relative;font-size:12px;font-weight:800;letter-spacing:.3em;color:var(--sub);margin-top:6px}
@@ -340,6 +344,15 @@ const FIREBASE_CONFIG={
   projectId:'top-pick---test',
   appId:'1:46203557580:web:51e16d091ed80a88a19469'
 };
+/* 3) MUSIK & SOUNDS: Lege MP3-Dateien ins Repository (neben die index.html oder in einen Ordner "musik"):
+      ladescreen_Künstler_Songtitel.mp3  → läuft auf dem Startbildschirm
+      menu_Künstler_Songtitel.mp3        → wechselnde Songs ab dem Hauptmenü (beliebig viele)
+      Künstler und Titel werden aus dem Dateinamen gelesen und unter Einstellungen → Credits angezeigt.
+      Optional eigene Effekte: sfx_klick, sfx_wuerfel, sfx_karte, sfx_punkt, sfx_fehlwurf,
+      sfx_muenze, sfx_kugel, sfx_sieg, sfx_niederlage, sfx_sirene (.mp3) ersetzen die eingebauten Töne.
+      Auf GitHub Pages werden die Dateien automatisch gefunden. Auf anderen Webseiten trage sie hier ein,
+      z. B. const MUSIC_FILES=['ladescreen_Max Muster_Intro.mp3','menu_Max Muster_Song 1.mp3']; */
+const MUSIC_FILES=[];
 /* ═════════════ KONFIGURATION (Regelwerk) ═════════════ */
 const CFG={
   CAP:200,            // Gehaltsgrenze für die Starting 5 (Mio.)
@@ -595,7 +608,7 @@ function go(ph){
   if(ph==='events')evReveal();
   if((ph==='season'||ph==='champion')&&ST.res&&ST.res.champ===0)setTimeout(()=>confetti(ph==='champion'?220:140),450);
 }
-function render(){renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
+function render(){audSync();renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
 function seasonLabel(){
   const p=ST.phase;
   if(p==='dice'||p==='captain'||p==='pre_done')return 'Preseason';
@@ -620,7 +633,7 @@ function renderHeader(){
 /* ═════════════ TITEL & HAUPTMENÜ ═════════════ */
 function screen(n){UI.screen=n;window.scrollTo(0,0);render();if(RM)return;const a=$('app');a.classList.remove('enter');void a.offsetWidth;a.classList.add('enter');clearTimeout(enterT);enterT=setTimeout(()=>a.classList.remove('enter'),650);}
 function logoHTML(){return `<div class="t-logo${LOGO_IMG?' img':''}">${LOGO_IMG?`<img src="${LOGO_IMG}" alt="TOP PICK">`:'🏀'}</div>`;}
-function vTitle(){app(`<div class="title-scr" onclick="screen('menu')">${logoHTML()}<div class="t-name">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div><div class="t-tap">TIPPEN ZUM SPIELEN</div></div>`);}
+function vTitle(){app(`<div class="title-scr" onclick="titleTap()">${logoHTML()}<div class="t-name">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div><div class="t-tap">TIPPEN ZUM SPIELEN</div><div class="t-song" id="t-song">${AUD&&AUD.cur&&AUD.mode==='title'?'🎵 '+esc(AUD.cur.title)+' – '+esc(AUD.cur.artist):''}</div></div>`);}
 function vMenu(){
   const sv_=UI.saved;
   const b=(icon,col,t1,t2,fn,cls,soon)=>`<button class="mbtn ${cls||''}" onclick="${fn}"><div class="mi" style="background:${col}22;color:${col}">${icon}</div><div class="grow"><div class="mt1">${t1}${soon?'<span class="soon-tag">BALD</span>':''}</div><div class="mt2">${t2}</div></div><div class="mut b" style="font-size:20px">›</div></button>`;
@@ -640,6 +653,7 @@ function vSettings(){
   app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button>
 <div class="mt">${phaseHead('Menü','Einstellungen','')}</div>
 <div class="panel"><div class="lbl">Animationen</div><div class="opt">${o('anim','auto','Automatisch')}${o('anim','on','An')}${o('anim','off','Aus')}</div><div class="s mut" style="margin-top:8px">„Automatisch“ richtet sich nach „Bewegung reduzieren“ auf deinem Gerät.</div></div>
+${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstand</div>${UI.saved?`<div class="s mut mb">Gespeichert: Saison ${UI.saved.season} · ${esc(TEAMS[UI.saved.gms[0].team].name)}</div><button class="btn bad" onclick="dropSave()">Spielstand löschen</button>`:'<div class="s mut">Kein gespeicherter Spielstand vorhanden.</div>'}</div>
 ${UI.hosting||UI.joined?`<div class="panel"><div class="lbl">Online-Räume</div>${UI.hosting?`<div class="s mut mb">Host von Raum ${esc(UI.hosting)}</div>`:''}${UI.joined?`<div class="s mut mb">Zuletzt beigetreten: Raum ${esc(UI.joined.code)}</div>`:''}<button class="btn sec" onclick="kvDel('tp_hosting');kvDel('tp_joined');UI.hosting=null;UI.joined=null;render()">Räume aus dem Menü entfernen</button></div>`:''}
 <div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Entwurf<br>19 echte Legend-Karten · Rookies & Free Agents als Platzhalter<br>Skills folgen, sobald alle Karten vorliegen.</div></div>`);
@@ -657,7 +671,7 @@ const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSet
 function vStart(){(SCREENS[UI.screen||'title']||vSetup)();}
 function vSetup(){
   const s=UI.setup,sv_=UI.saved;
-  app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button><div style="text-align:center;padding:14px 0 6px"><div style="font-size:46px">🏀</div><div class="h1" style="font-size:30px;letter-spacing:.05em">TOP PICK</div><div class="sub">Basketball-Manager · Draft · Free Agency · Playoffs</div><div class="row wrap" style="justify-content:center;margin-top:10px"><span class="chip" style="color:${TIER_COL.Legend};border-color:${TIER_COL.Legend}66">19 echte Legends</span><span class="chip">Rookies & Free Agents: Platzhalter</span></div></div>
+  app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button><div style="text-align:center;padding:14px 0 6px">${LOGO_IMG?`<img src="${LOGO_IMG}" alt="TOP PICK" style="width:84px;height:84px;object-fit:contain;display:block;margin:0 auto 6px">`:'<div style="font-size:46px">🏀</div>'}<div class="h1" style="font-size:30px;letter-spacing:.05em">TOP PICK</div><div class="sub">Basketball-Manager · Draft · Free Agency · Playoffs</div><div class="row wrap" style="justify-content:center;margin-top:10px"><span class="chip" style="color:${TIER_COL.Legend};border-color:${TIER_COL.Legend}66">19 echte Legends</span><span class="chip">Rookies & Free Agents: Platzhalter</span></div></div>
 ${sv_?`<div class="panel"><div class="lbl">Gespeichertes Spiel</div><div class="row">${badgeT(sv_.gms[0].team)}<div class="grow"><div class="b">${esc(TEAMS[sv_.gms[0].team].name)}</div><div class="s mut">Saison ${sv_.season} · ${sv_.gms.length} GMs · 💍 ${sv_.gms[0].rings}</div></div></div><div class="row mt"><button class="btn" onclick="resume()">Fortsetzen</button><button class="btn sec sm" onclick="dropSave()">Löschen</button></div></div>`:''}
 <div class="panel"><div class="lbl">Anzahl GMs</div><div class="seg">${[2,3,4,5,6].map(n=>`<button class="segb ${s.n===n?'on':''}" onclick="UI.setup.n=${n};render()">${n}</button>`).join('')}</div><div class="s mut" style="margin-top:8px">Du + ${s.n-1} KI-Manager</div></div>
 <div class="panel"><div class="lbl">Dein Name</div><input class="inp" maxlength="16" placeholder="Dein Name" value="${esc(s.name)}" oninput="UI.setup.name=this.value"></div>
@@ -694,7 +708,7 @@ function rollDice(){
     document.querySelectorAll('#dice-list [data-gi]').forEach(el=>{const d=before[el.dataset.gi]-el.getBoundingClientRect().top;if(!d)return;el.style.transition='none';el.style.transform=`translateY(${d}px)`;void el.offsetWidth;el.style.transition='transform .55s cubic-bezier(.2,.8,.2,1)';el.style.transform='';});
   };
   if(RM){finish();return;}
-  UI.rolling=true;const b=$('dice-btn');if(b){b.disabled=true;b.textContent='Würfelt …';}
+  UI.rolling=true;sfx('dice');const b=$('dice-btn');if(b){b.disabled=true;b.textContent='Würfelt …';}
   ST.gms.forEach((g,i)=>{
     const el=$('die-'+i);if(!el)return;el.classList.add('rolling');
     const iv=setInterval(()=>{el.textContent=DIE[rint(1,6)];},80);
@@ -725,7 +739,7 @@ function takeCaptain(i){
 }
 /* ── Aufdeck-Animation (Kapitän, Ereigniskarten) ── */
 function showReveal(o){
-  const ar=$('arena');arClear();UI.arDone=false;UI.revDone=o.onDone||null;
+  const ar=$('arena');arClear();UI.arDone=false;UI.revDone=o.onDone||null;setTimeout(()=>sfx('flip'),450);
   ar.innerHTML=`<div class="ar-bg"></div><div class="rays" style="--g:${o.glow}"></div>
 <div class="ar-top"><div class="kick">${o.kicker}</div></div>
 <div class="rv-card" id="rv-card" style="--g:${o.glow}"><div class="flip hid"><div class="fr">${o.front}</div><div class="bk">${o.back}</div></div></div>
@@ -975,7 +989,7 @@ function lotAnim(gi,n,rem,done){
   ar.classList.remove('hidden');
   ar.onclick=e=>{if(!UI.arDone&&!e.target.closest('.ar-btn'))lotFinish();};
   requestAnimationFrame(()=>ar.classList.add('on'));
-  arAt(1700,()=>{const dr=$('lot-drum'),p=$('lb-pick'),o=$('lot-out');if(dr)dr.classList.add('stop');if(p)p.classList.add('gone');if(o)o.classList.add('drop');});
+  arAt(1700,()=>{const dr=$('lot-drum'),p=$('lb-pick'),o=$('lot-out');if(dr)dr.classList.add('stop');if(p)p.classList.add('gone');if(o)o.classList.add('drop');sfx('ball');});
   arAt(2400,lotFinish);
 }
 function lotFinish(){
@@ -1255,6 +1269,7 @@ function duelSheet(){
 function arFinish(){
   const m=UI.m;if(!m||!m.pending||UI.arDone)return;
   UI.arDone=true;arClear();
+  sfx(m.pending.humanAtt===m.pending.attWin?'point':'miss');
   const p=m.pending,ar=$('arena'),eA=$('ar-a'),eD=$('ar-d'),av=$('ar-av'),dv=$('ar-dv');
   ar.classList.add('on');
   ar.querySelectorAll('.flip.hid').forEach(f=>f.classList.remove('hid'));
@@ -1296,8 +1311,8 @@ function afterDuel(){
   m.myTurn=!m.myTurn;m.phase='atk';render();
 }
 function overSheet(){
-  const m=UI.m;if(!m)return;const win=m.sMe>m.sOp;UI.shLock=true;if(win)confetti();
-  openSheet(`<div style="text-align:center"><div style="font-size:56px">${win?'🏆':'😤'}</div><div class="h1">${win?'Sieg!':'Niederlage'}</div><div style="font-size:40px;font-weight:900;color:${win?'var(--ok)':'var(--bad)'}">${m.sMe} : ${m.sOp}</div></div>
+  const m=UI.m;if(!m)return;const win=m.sMe>m.sOp;UI.shLock=true;if(win)confetti();sfx(win?'win':'lose');
+  openSheet(`<div style="text-align:center"><div class="wl ${win?'w':'l'}">${win?'W':'L'}</div><div class="h1">${win?'Sieg!':'Niederlage'}</div><div style="font-size:40px;font-weight:900;color:${win?'var(--ok)':'var(--bad)'}">${m.sMe} : ${m.sOp}</div></div>
 <div class="col mt">${m.log.map((l,k)=>`<div class="item"><div class="b" style="width:18px">${k+1}</div><div class="grow s"><b>${esc(DB[l.a].name)}</b> ${STAT_ICON[l.k]} ${l.av} vs ${l.dv} <b>${esc(DB[l.d].name)}</b></div><span class="chip ${l.me?'ok':'bad'}">${l.me?'Du':'Gegner'}</span></div>`).join('')}</div>
 <button class="btn mt" data-act="go">Weiter</button>`,{go:finishMatch});
 }
@@ -1348,7 +1363,7 @@ function coinSim(gm){
   arAt(450+flips.length*1450+150,coinFinish);
 }
 function coinToss(i){
-  const c=UI.coin;if(!c)return;const s=$('cslot-'+i);if(s)s.classList.add('now');
+  const c=UI.coin;if(!c)return;const s=$('cslot-'+i);if(s)s.classList.add('now');sfx('coin');
   const target=c.flips[i]?0:180;c.ang+=1440+((target-c.ang%360)+360)%360;
   const coin=$('coin3'),w=$('coin-wrap');if(!coin||!w)return;
   coin.style.transition='';coin.style.transform=`rotateY(${c.ang}deg)`;
@@ -1802,7 +1817,7 @@ function nextFx(){
 const FX={
   msg:(t,done)=>{toast(t);setTimeout(done,900);},
   die:(d,done)=>{
-    done();if(RM||!ST||ST.phase!=='dice')return;UI.dieAnim=UI.dieAnim||{};UI.dieAnim[d.gi]=1;render();
+    done();sfx('dice');if(RM||!ST||ST.phase!=='dice')return;UI.dieAnim=UI.dieAnim||{};UI.dieAnim[d.gi]=1;render();
     const iv=setInterval(()=>{const el=$('die-'+d.gi);if(el)el.textContent=DIE[rint(1,6)];},80);
     setTimeout(()=>{clearInterval(iv);if(UI.dieAnim)delete UI.dieAnim[d.gi];if(!ST)return;render();const el=$('die-'+d.gi);if(el)el.classList.add('landed');},900);
   },
@@ -2102,7 +2117,7 @@ function duelFX(d,done){
 <div class="ar-skip" id="ar-skip">Tippen zum Überspringen</div>`;
   ar.classList.remove('hidden');
   const fin=()=>{
-    if(UI.arDone)return;UI.arDone=true;arClear();ar.classList.add('on');
+    if(UI.arDone)return;UI.arDone=true;arClear();ar.classList.add('on');sfx(mine?'point':'miss');
     ar.querySelectorAll('.flip.hid').forEach(f=>f.classList.remove('hid'));
     ['ar-vs','ar-stat','ar-res','ar-btn'].forEach(id=>{const e=$(id);if(e)e.classList.add('on');});
     const eA=$('ar-a'),eD=$('ar-d'),av=$('ar-av'),dv=$('ar-dv');if(!eA||!eD)return;
@@ -2125,8 +2140,8 @@ function duelFX(d,done){
 }
 function mendFX(d,done){
   const me=ME(),ms=me===d.h?'h':'a',my=ms==='h'?d.hs:d.as,op=ms==='h'?d.as:d.hs,win=my>op,oname=esc(G_(ms==='h'?d.a:d.h).name);
-  UI.shLock=true;if(win)confetti();
-  openSheet(`<div style="text-align:center"><div style="font-size:56px">${win?'🏆':'😤'}</div><div class="h1">${win?'Sieg!':'Niederlage'}</div><div class="s mut">gegen ${oname}</div><div style="font-size:40px;font-weight:900;color:${win?'var(--ok)':'var(--bad)'}">${my} : ${op}</div></div>
+  UI.shLock=true;if(win)confetti();sfx(win?'win':'lose');
+  openSheet(`<div style="text-align:center"><div class="wl ${win?'w':'l'}">${win?'W':'L'}</div><div class="h1">${win?'Sieg!':'Niederlage'}</div><div class="s mut">gegen ${oname}</div><div style="font-size:40px;font-weight:900;color:${win?'var(--ok)':'var(--bad)'}">${my} : ${op}</div></div>
 <div class="col mt">${(d.log||[]).map((l,k)=>`<div class="item"><div class="b" style="width:18px">${k+1}</div><div class="grow s"><b>${esc(DB[l.a].name)}</b> ${STAT_ICON[l.k]} ${l.av} vs ${l.dv} <b>${esc(DB[l.d].name)}</b></div><span class="chip ${l.w===ms?'ok':'bad'}">${l.w===ms?'Du':oname}</span></div>`).join('')}</div>
 <button class="btn mt" data-act="go">Weiter</button>`,{go:()=>{UI.shLock=false;closeSheet();UI.view=null;UI.sel=null;render();done();}});
 }
@@ -2493,6 +2508,127 @@ function renderOnline(){
   if(ST.phase!=='lobby'&&ME()<0){oClaim();return;}
   (OVIEWS[ST.phase]||oPreDone)();
 }
+
+/* ═════════════ AUDIO: Musik & Soundeffekte ═════════════ */
+var AUD={ctx:null,sfxOut:null,unlocked:false,ready:false,tracks:{title:[],menu:[]},sfxFiles:{},buf:{},el:null,mode:null,cur:null,queue:[],duck:1,titleHeard:false};
+if(SET.music==null)SET.music=60;if(SET.sfx==null)SET.sfx=70;
+const SFX_FILE={klick:'click',wuerfel:'dice',karte:'flip',punkt:'point',fehlwurf:'miss',muenze:'coin',kugel:'ball',sieg:'win',niederlage:'lose',sirene:'buzzer'};
+function trackInfo(path){
+  const f=path.split('/').pop(),base=f.replace(/\.(mp3|m4a|ogg|wav|aac)$/i,''),m=base.match(/^(ladescreen|menu)_(.+)$/i);if(!m)return null;
+  const parts=m[2].split('_').map(x=>x.trim()).filter(Boolean);
+  return{kind:m[1].toLowerCase()==='ladescreen'?'title':'menu',src:path.split('/').map(encodeURIComponent).join('/'),file:f,artist:parts.length>1?parts[0]:'Unbekannt',title:parts.length>1?parts.slice(1).join(' '):(parts[0]||'Unbekannt')};
+}
+function audAddFiles(paths){
+  (paths||[]).forEach(p=>{
+    if(typeof p!=='string'||!/\.(mp3|m4a|ogg|wav|aac)$/i.test(p))return;
+    const f=p.split('/').pop(),s=f.match(/^sfx_([a-z]+)\./i);
+    if(s){const k=SFX_FILE[s[1].toLowerCase()]||s[1].toLowerCase();AUD.sfxFiles[k]=p.split('/').map(encodeURIComponent).join('/');return;}
+    const t=trackInfo(p);if(t&&!AUD.tracks[t.kind].some(x=>x.src===t.src))AUD.tracks[t.kind].push(t);
+  });
+}
+async function audDiscover(){
+  audAddFiles(typeof MUSIC_FILES!=='undefined'?MUSIC_FILES:[]);
+  if(/\.github\.io$/i.test(location.hostname)){
+    const owner=location.hostname.split('.')[0],seg=location.pathname.split('/').filter(Boolean),repo=seg.length&&seg[0].indexOf('.')<0?seg[0]:location.hostname;
+    let list=null;try{const c=sessionStorage.getItem('tp_aud');if(c)list=JSON.parse(c);}catch(e){}
+    if(!list){
+      list=[];const get=async p=>{try{const r=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${p}`);if(!r.ok)return [];const j=await r.json();return Array.isArray(j)?j:[];}catch(e){return [];}};
+      for(const it of await get('')){if(it.type==='file')list.push(it.path);else if(it.type==='dir'&&/^(music|musik|sounds?|sfx|audio)$/i.test(it.name))(await get(it.path)).forEach(x=>{if(x.type==='file')list.push(x.path);});}
+      try{sessionStorage.setItem('tp_aud',JSON.stringify(list));}catch(e){}
+    }
+    audAddFiles(list);
+  }
+  AUD.tracks.title.sort((a,b)=>a.file.localeCompare(b.file));AUD.ready=true;audSync();
+  if(UI.screen==='settings'&&!ST)render();
+}
+function audUnlock(){
+  try{
+    if(!AUD.ctx){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;AUD.ctx=new C();AUD.sfxOut=AUD.ctx.createGain();AUD.sfxOut.connect(AUD.ctx.destination);audApplyVol();}
+    if(AUD.ctx.state==='suspended')AUD.ctx.resume();
+  }catch(e){}
+  if(!AUD.unlocked){AUD.unlocked=true;audSync();}
+  else if(AUD.el&&AUD.el.paused&&!document.hidden){const p=AUD.el.play();if(p&&p.catch)p.catch(()=>{});}
+}
+function audMusicVol(){return Math.max(0,Math.min(1,(+SET.music||0)/100))*AUD.duck;}
+function audLvl(a){const v=Math.max(0,Math.min(1,(a._g||0)*audMusicVol()));if(a._gn)a._gn.gain.value=v;else a.volume=v;}
+function audApplyVol(){if(AUD.sfxOut)AUD.sfxOut.gain.value=Math.max(0,Math.min(1,(+SET.sfx||0)/100));if(AUD.el)audLvl(AUD.el);}
+function audFade(a,to,ms,cb){clearInterval(a._fi);const from=a._g||0,t0=performance.now();a._fi=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/ms);a._g=from+(to-from)*k;audLvl(a);if(k>=1){clearInterval(a._fi);if(cb)cb();}},40);}
+function audWant(){return(!ST&&!NET.on&&(UI.screen||'title')==='title')?'title':'menu';}
+function audSync(){
+  if(!AUD||!AUD.ready||!AUD.unlocked)return;
+  const want=audWant();if(want===AUD.mode)return;
+  AUD.mode=want;audStart(want);
+}
+function audNextMenu(){
+  const L=AUD.tracks.menu;if(!L.length)return null;
+  if(!AUD.queue.length){AUD.queue=shuffle(L.slice());if(AUD.cur&&AUD.queue.length>1&&AUD.queue[0]===AUD.cur)AUD.queue.push(AUD.queue.shift());}
+  return AUD.queue.shift();
+}
+function audStart(kind){
+  const t=kind==='title'?AUD.tracks.title[0]:audNextMenu(),old=AUD.el;AUD.el=null;
+  if(old)audFade(old,0,700,()=>{old.pause();old.removeAttribute('src');try{old.load();}catch(e){}});
+  AUD.cur=t||null;audShowSong();
+  if(!t)return;
+  const a=new Audio(t.src);a.preload='auto';a.loop=kind==='title'||AUD.tracks.menu.length<2;a._g=0;
+  if(AUD.ctx){try{const s=AUD.ctx.createMediaElementSource(a),g=AUD.ctx.createGain();g.gain.value=0;s.connect(g);g.connect(AUD.ctx.destination);a._gn=g;}catch(e){}}
+  audLvl(a);
+  a.addEventListener('ended',()=>{if(AUD.el===a&&AUD.mode==='menu')audStart('menu');});
+  a.addEventListener('error',()=>{if(AUD.el===a&&AUD.mode==='menu'&&AUD.tracks.menu.length>1)setTimeout(()=>{if(AUD.el===a)audStart('menu');},800);});
+  AUD.el=a;const p=a.play();if(p&&p.catch)p.catch(()=>{});
+  audFade(a,1,900);
+  if(UI.screen==='settings'&&!ST)render();
+}
+function audSkip(){if(AUD.mode==='menu'&&AUD.tracks.menu.length)audStart('menu');}
+function audShowSong(){const n=document.getElementById('t-song');if(n)n.textContent=AUD.cur&&AUD.mode==='title'?'🎵 '+AUD.cur.title+' – '+AUD.cur.artist:'';}
+function setVol(k,v){SET[k]=+v;const e=document.getElementById('vol-'+k);if(e)e.textContent=v+'%';audApplyVol();saveSettings();}
+function titleTap(){
+  audUnlock();
+  if(AUD.ready&&AUD.tracks.title.length&&!AUD.titleHeard){AUD.titleHeard=true;audShowSong();return;}
+  screen('menu');
+}
+
+/* ── Soundeffekte (eingebaut, per sfx_*.mp3 ersetzbar) ── */
+function sTone(f,d,type,vol,when,f2){const c=AUD.ctx,t=c.currentTime+(when||0),o=c.createOscillator(),g=c.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(AUD.sfxOut);o.start(t);o.stop(t+d+0.05);}
+function sNoise(d,vol,when,hp,lp){const c=AUD.ctx,t=c.currentTime+(when||0),n=Math.max(1,Math.floor(c.sampleRate*d)),b=c.createBuffer(1,n,c.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=Math.random()*2-1;const s=c.createBufferSource();s.buffer=b;let node=s;if(hp){const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=hp;node.connect(f);node=f;}if(lp){const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=lp;node.connect(f);node=f;}const g=c.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);node.connect(g);g.connect(AUD.sfxOut);s.start(t);s.stop(t+d+0.02);}
+const SFX_SYN={
+  click:()=>sTone(1500,0.04,'triangle',0.22),
+  dice:()=>{for(let i=0;i<6;i++){sNoise(0.045,0.45,i*0.075,1800);sTone(260+Math.random()*240,0.035,'square',0.06,i*0.075);}},
+  flip:()=>{sNoise(0.2,0.3,0,2200,9000);sTone(500,0.14,'sine',0.08,0,1300);},
+  point:()=>{sTone(660,0.12,'triangle',0.32);sTone(990,0.24,'triangle',0.32,0.1);},
+  miss:()=>sTone(320,0.32,'sawtooth',0.1,0,140),
+  coin:()=>{sTone(2600,0.45,'sine',0.2);sTone(3400,0.3,'sine',0.12,0.02);},
+  ball:()=>{sTone(150,0.26,'sine',0.55,0,60);sTone(150,0.16,'sine',0.3,0.3,70);},
+  win:()=>{[523,659,784,1047].forEach((f,i)=>sTone(f,i===3?0.5:0.16,'triangle',0.3,i*0.11));},
+  lose:()=>{[392,330,262].forEach((f,i)=>sTone(f,i===2?0.55:0.24,'triangle',0.28,i*0.2));},
+  buzzer:()=>{sTone(150,0.75,'sawtooth',0.16);sTone(153,0.75,'square',0.07);}
+};
+async function sfxFile(k){
+  if(AUD.buf[k]===undefined){AUD.buf[k]=null;try{const r=await fetch(AUD.sfxFiles[k]);const ab=await r.arrayBuffer();AUD.buf[k]=await AUD.ctx.decodeAudioData(ab);}catch(e){AUD.buf[k]=false;}}
+  return AUD.buf[k];
+}
+function sfx(k){
+  if(!AUD||!AUD.ctx||!(+SET.sfx>0))return;
+  try{if(AUD.ctx.state==='suspended')AUD.ctx.resume();}catch(e){}
+  if(AUD.sfxFiles[k]){sfxFile(k).then(b=>{if(b){const s=AUD.ctx.createBufferSource();s.buffer=b;s.connect(AUD.sfxOut);s.start();}else if(b===false&&SFX_SYN[k])SFX_SYN[k]();});return;}
+  if(SFX_SYN[k]){try{SFX_SYN[k]();}catch(e){}}
+}
+document.addEventListener('pointerdown',e=>{
+  audUnlock();
+  const t=e.target.closest&&e.target.closest('button,.mbtn,.item.tap,.cw,.tab,.segb,.teamb,.drum,[onclick],[data-act]');
+  if(t&&!t.disabled&&!t.closest('.title-scr'))sfx('click');
+},true);
+document.addEventListener('visibilitychange',()=>{if(!AUD.el)return;if(document.hidden)AUD.el.pause();else if(AUD.unlocked){const p=AUD.el.play();if(p&&p.catch)p.catch(()=>{});}});
+(function(){const ar=document.getElementById('arena');if(!ar||!window.MutationObserver)return;new MutationObserver(()=>{const d=ar.classList.contains('hidden')?1:0.45;if(d!==AUD.duck){AUD.duck=d;audApplyVol();}}).observe(ar,{attributes:true,attributeFilter:['class']});})();
+function audSettingsHTML(){
+  const all=AUD.tracks.title.map(t=>({t:t,k:'Startbildschirm'})).concat(AUD.tracks.menu.map(t=>({t:t,k:'Menü & Spiel'})));
+  const credits=all.length?all.map(x=>`<div class="item"><div style="font-size:20px">🎵</div><div class="grow"><div class="b s">${esc(x.t.title)}</div><div class="s mut">${esc(x.t.artist)}</div></div><span class="chip">${x.k}</span></div>`).join(''):`<div class="s mut" style="line-height:1.6">Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):<br><b>ladescreen_Künstler_Songtitel.mp3</b> für den Startbildschirm<br><b>menu_Künstler_Songtitel.mp3</b> für wechselnde Songs ab dem Hauptmenü</div>`;
+  return `<div class="panel"><div class="lbl">Ton</div>
+<div class="row between"><span class="s b">🎵 Musik</span><span class="s mut" id="vol-music">${SET.music}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.music}" oninput="setVol('music',this.value)">
+<div class="row between"><span class="s b">🔊 Effekte & Klicks</span><span class="s mut" id="vol-sfx">${SET.sfx}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.sfx}" oninput="setVol('sfx',this.value)" onchange="sfx('point')">
+${AUD.cur?`<div class="item mt"><div style="font-size:20px">▶️</div><div class="grow"><div class="s mut">Läuft gerade</div><div class="b s">${esc(AUD.cur.title)} – ${esc(AUD.cur.artist)}</div></div>${AUD.mode==='menu'&&AUD.tracks.menu.length>1?'<button class="btn sec sm" onclick="audSkip()">⏭ Nächster</button>':''}</div>`:''}</div>
+<div class="panel"><div class="lbl">Credits · Musik</div><div class="col">${credits}</div></div>`;
+}
+audDiscover();
 
 /* ═════════════ VIEWS & START ═════════════ */
 const VIEWS={start:vStart,dice:vDice,captain:vCaptain,fa:vFA,draft:vDraft,hub:vHub,lineup:vLineup,match:vMatch,events:vEvents,season:vSeason,champion:vChampion,trade:vTrade,release:vRelease};

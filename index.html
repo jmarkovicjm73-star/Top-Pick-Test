@@ -140,6 +140,7 @@ body.mm .hl{font-size:9px;margin:0}
 body.mm .cs .lab{display:none}
 body.mm .cs .cw{position:relative}
 body.mm .stb{display:flex;position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#06121d;border:2px solid #0a1429;z-index:2}
+.lot-drum.phys{animation:none}
 .drum-t{font-size:22px;font-weight:900;letter-spacing:.1em;color:#fde68a;text-shadow:0 0 14px rgba(253,230,138,.35)}
 .stb.w{background:var(--ok)}.stb.l{background:var(--bad)}
 
@@ -619,12 +620,12 @@ function hasStore(){return !!LS||hasWS();}
 async function kvGet(k){if(LS){try{return LS.getItem(k);}catch(e){return null;}}if(!hasWS())return null;try{const r=await window.storage.get(k,false);return r&&r.value!=null?r.value:null;}catch(e){return null;}}
 function kvSet(k,v){if(LS){try{LS.setItem(k,v);}catch(e){}return;}if(!hasWS())return;try{const p=window.storage.set(k,v,false);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
 function kvDel(k){if(LS){try{LS.removeItem(k);}catch(e){}return;}if(!hasWS())return;try{const p=window.storage.delete(k,false);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
-function save(){if(!ST||NET.on||ST.phase==='match'||!hasStore())return;const snap=JSON.stringify(ST);clearTimeout(saveT);saveT=setTimeout(()=>kvSet(SAVE_KEY,snap),700);}
+function save(){if(!ST||NET.on||ST.phase==='match'||!hasStore())return;if(!UI.slot){if(SLOTS.length>=SLOT_MAX)return;UI.slot=newSlotId();SLOTS.unshift(slotMeta(UI.slot,ST));slotsSave();}const id=UI.slot,snap=JSON.stringify(ST);clearTimeout(saveT);saveT=setTimeout(()=>{kvSet(slotKey(id),snap);slotTouch(id,JSON.parse(snap));},700);}
 async function loadSave(){const v=await kvGet(SAVE_KEY);if(!v)return null;try{return JSON.parse(v);}catch(e){return null;}}
 function wipeSave(){kvDel(SAVE_KEY);}
 function resume(){const s=UI.saved;if(!s)return;ST=s;UI.saved=null;go(ST.phase==='match'?'hub':ST.phase);}
 function dropSave(){wipeSave();UI.saved=null;render();}
-function resetGame(){clearTimeout(botT);wipeSave();ST=null;UI.saved=null;UI.m=null;UI.tr=null;UI.lu=null;UI.shLock=false;UI.screen='menu';closeSheet();render();window.scrollTo(0,0);}
+function resetGame(){clearTimeout(botT);clearTimeout(saveT);if(UI.slot)slotDel(UI.slot);UI.slot=null;ST=null;UI.saved=null;UI.m=null;UI.tr=null;UI.lu=null;UI.shLock=false;UI.screen='menu';closeSheet();render();window.scrollTo(0,0);}
 
 /* ═════════════ NAVIGATION ═════════════ */
 function app(html){$('app').innerHTML=html;}
@@ -666,17 +667,17 @@ function screen(n){UI.screen=n;window.scrollTo(0,0);render();if(RM)return;const 
 function logoHTML(){return `<div class="t-logo${LOGO_IMG?' img':''}">${LOGO_IMG?`<img src="${LOGO_IMG}" alt="TOP PICK">`:'🏀'}</div>`;}
 function vTitle(){app(`<div class="title-scr" onclick="titleTap()">${logoHTML()}<div class="t-name">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div><div class="t-tap">TIPPEN ZUM SPIELEN</div><div class="t-song" id="t-song">${AUD&&AUD.cur&&AUD.mode==='title'?'🎵 '+esc(AUD.cur.title)+' – '+esc(AUD.cur.artist):''}</div></div>`);}
 function vMenu(){
-  const sv_=UI.saved;
+  const sl=SLOTS[0],rm=ROOMS[0];
   const b=(icon,col,t1,t2,fn,cls,soon)=>`<button class="mbtn ${cls||''}" onclick="${fn}"><div class="mi" style="background:${col}22;color:${col}">${icon}</div><div class="grow"><div class="mt1">${t1}${soon?'<span class="soon-tag">BALD</span>':''}</div><div class="mt2">${t2}</div></div><div class="mut b" style="font-size:20px">›</div></button>`;
   app(`<div class="menu-head">${logoHTML()}<div class="t-name">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div></div>
-${sv_?b('▶️','#34d399','Fortsetzen',`Saison ${sv_.season} · ${esc(TEAMS[sv_.gms[0].team].name)} · 💍 ${sv_.gms[0].rings}`,'resume()','main'):''}
-${UI.hosting?b('🌐','#7dd3fc','Raum '+esc(UI.hosting)+' fortsetzen','Als Host weiterspielen','resumeHost()','main'):''}
-${UI.joined&&UI.joined.code!==UI.hosting?b('🌐','#7dd3fc','Raum '+esc(UI.joined.code)+' wieder beitreten','Als '+esc(UI.joined.name)+' weiterspielen','rejoin()','main'):''}
-${b('🏀','#f7a81b','Offline spielen','Gegen KI-Manager · 2–6 Teams',"screen('start')",sv_||UI.hosting||UI.joined?'':'main')}
+${sl?b('▶️','#34d399','Fortsetzen',`${esc(sl.name)} · Saison ${sl.season} · 💍 ${sl.rings}`,`loadSlot('${sl.id}')`,'main'):''}
+${rm?b('🌐','#7dd3fc',(rm.role==='host'?'Raum ':'Raum ')+esc(rm.code)+(rm.role==='host'?' fortsetzen':' wieder beitreten'),rm.role==='host'?'Als Host weiterspielen':'Als '+esc(rm.name||'Gast')+' weiterspielen',`roomGo('${rm.code}')`,'main'):''}
+${b('🏀','#f7a81b','Offline spielen','Gegen KI-Manager · 2–6 Teams',"screen('start')",sl||rm?'':'main')}
 ${b('👥','#a78bfa','Online mit Freunden','Jeder spielt auf seinem eigenen Gerät',"screen('online')")}
+${b('💾','#fbbf24','Spielstände',`${SLOTS.length} offline · ${ROOMS.length} online`,"screen('saves')")}
 ${b('📚','#60a5fa','Kartenalbum','Alle Karten mit Werten und Skills',"screen('album')")}
 ${b('📖','#94a3b8','Spielregeln','Kurzfassung des Regelwerks','rulesSheet()')}
-${b('⚙️','#94a3b8','Einstellungen','Animationen, Spielstand',"screen('settings')")}
+${b('⚙️','#94a3b8','Einstellungen','Animationen, Ton, Credits',"screen('settings')")}
 <div class="s mut" style="text-align:center;margin-top:18px">Entwurf · Legends echt · Rookies & Free Agents Platzhalter</div>`);
 }
 function vSettings(){
@@ -685,8 +686,7 @@ function vSettings(){
 <div class="mt">${phaseHead('Menü','Einstellungen','')}</div>
 <div class="panel"><div class="lbl">Animationen</div><div class="opt">${o('anim','auto','Automatisch')}${o('anim','on','An')}${o('anim','off','Aus')}</div><div class="s mut" style="margin-top:8px">„Automatisch“ richtet sich nach „Bewegung reduzieren“ auf deinem Gerät.</div></div>
 ${audSettingsHTML()}
-<div class="panel"><div class="lbl">Spielstand</div>${UI.saved?`<div class="s mut mb">Gespeichert: Saison ${UI.saved.season} · ${esc(TEAMS[UI.saved.gms[0].team].name)}</div><button class="btn bad" onclick="dropSave()">Spielstand löschen</button>`:'<div class="s mut">Kein gespeicherter Spielstand vorhanden.</div>'}</div>
-${UI.hosting||UI.joined?`<div class="panel"><div class="lbl">Online-Räume</div>${UI.hosting?`<div class="s mut mb">Host von Raum ${esc(UI.hosting)}</div>`:''}${UI.joined?`<div class="s mut mb">Zuletzt beigetreten: Raum ${esc(UI.joined.code)}</div>`:''}<button class="btn sec" onclick="kvDel('tp_hosting');kvDel('tp_joined');UI.hosting=null;UI.joined=null;render()">Räume aus dem Menü entfernen</button></div>`:''}
+<div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 <div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Entwurf<br>19 echte Legend-Karten · Rookies & Free Agents als Platzhalter<br>Skills folgen, sobald alle Karten vorliegen.</div></div>`);
 }
 function vAlbum(){
@@ -698,7 +698,7 @@ function vAlbum(){
 <div class="row wrap mt"><span class="chip">${ids.length} Karten</span>${['G','F','C'].map(p=>`<span class="chip">${p} ${cnt(ids,p)}</span>`).join('')}</div>
 <div class="grid4 mt">${ids.map(id=>`<div class="cw" style="cursor:pointer" onclick="cardSheet('${id}',null)">${cardHTML(id,null)}</div>`).join('')}</div>`);
 }
-const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum};
+const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum,saves:vSaves};
 function vStart(){(SCREENS[UI.screen||'title']||vSetup)();}
 function vSetup(){
   const s=UI.setup,sv_=UI.saved;
@@ -711,13 +711,14 @@ ${sv_?`<div class="panel"><div class="lbl">Gespeichertes Spiel</div><div class="
 <div class="cta"><div class="in"><button class="btn" onclick="newGame()">Neues Spiel starten</button></div></div>`);
 }
 function newGame(){
+  if(SLOTS.length>=SLOT_MAX){toast('Alle '+SLOT_MAX+' Spielstände sind belegt – lösche zuerst einen');screen('saves');return;}
   const s=UI.setup,n=s.n,name=(s.name||'').trim()||'Du';
   const others=shuffle([0,1,2,3,4,5].filter(i=>i!==s.team));
   ST={v:2,phase:'dice',season:1,gms:[],order:[],
     decks:{L:shuffle(IDS('L')),FA:shuffle(IDS('S').concat(IDS('B'))),R:shuffle(IDS('R'))},
     cap:null,fa:null,dr:null,sched:[],md:0,ev:null,seeds:null,res:null,finalLoser:null,midTrade:false,tr:null};
   for(let i=0;i<n;i++)ST.gms.push({name:i===0?name:BOT_NAMES[i-1],team:i===0?s.team:others[i-1],roster:[],trade:0,picks:0,rings:0,ringHolder:false,inj:{},buffs:[],up:{},roll:0,w:0,l:0,pf:0,pa:0});
-  wipeSave();UI.saved=null;go('dice');
+  UI.saved=null;UI.slot=newSlotId();const nm=TEAMS[s.team].name,dup=SLOTS.filter(x=>x.name.indexOf(nm)===0).length;SLOTS.unshift(slotMeta(UI.slot,ST,dup?nm+' '+(dup+1):nm));slotsSave();go('dice');
 }
 
 /* ═════════════ PHASE 1: WÜRFELN ═════════════ */
@@ -1006,32 +1007,65 @@ function drawBall(){
   if(RM){toast(`Pick ${n}: ${gi===0?'Du!':G_(gi).name}`);lotDone();return;}
   lotAnim(gi,n,rem,UI.lotApply);
 }
+function lotPhys(rem,gi){
+  const cv=$('lot-cv');if(!cv||!cv.getContext)return null;const S=192,dpr=Math.min(2,window.devicePixelRatio||1);cv.width=S*dpr;cv.height=S*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);
+  const C={x:96,y:96},R=96,r=15,STEG=38,TH=4,WS=2.4;let marked=false;
+  const balls=rem.map(b=>{const t=TEAMS[G_(b).team],pick=!marked&&b===gi;if(pick)marked=true;return{x:C.x+(Math.random()*2-1)*55,y:C.y+20+Math.random()*45,vx:0,vy:0,rot:0,t:t,gi:b,pick:pick,a:1};});
+  const P={balls:balls,A:Math.random()*6.28,w:0,state:'mix',tg:null,last:0,alive:true};
+  function steg(b){const ux=Math.cos(P.A),uy=Math.sin(P.A),p1x=C.x+ux*(R-2),p1y=C.y+uy*(R-2),sx=-ux*STEG,sy=-uy*STEG,L2=STEG*STEG;
+    let k=((b.x-p1x)*sx+(b.y-p1y)*sy)/L2;k=Math.max(0,Math.min(1,k));const qx=p1x+sx*k,qy=p1y+sy*k,dx=b.x-qx,dy=b.y-qy,d=Math.hypot(dx,dy),mn=r+TH;
+    if(d<mn&&d>0.001){const nx=dx/d,ny=dy/d;b.x=qx+nx*mn;b.y=qy+ny*mn;const vqx=-P.w*(qy-C.y),vqy=P.w*(qx-C.x),vn=(b.vx-vqx)*nx+(b.vy-vqy)*ny;if(vn<0){b.vx-=1.55*vn*nx;b.vy-=1.55*vn*ny;b.vx+=(Math.random()-.5)*60;}}}
+  function step(dt){
+    const tw=P.state==='mix'?WS:(P.state==='drop'?WS*0.35:0);P.w+=(tw-P.w)*Math.min(1,dt*3);P.A+=P.w*dt;
+    const L=balls.filter(b=>!b.gone&&b!==P.tg);
+    L.forEach(b=>{b.vy+=900*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.rot+=b.vx*dt/r;
+      const dx=b.x-C.x,dy=b.y-C.y,d=Math.hypot(dx,dy),lim=R-r-3;
+      if(d>lim){const nx=dx/d,ny=dy/d;b.x=C.x+nx*lim;b.y=C.y+ny*lim;const vn=b.vx*nx+b.vy*ny;if(vn>0){b.vx-=1.45*vn*nx;b.vy-=1.45*vn*ny;}const tx=-ny,ty=nx,vt=b.vx*tx+b.vy*ty;b.vx+=(P.w*lim-vt)*0.08*tx;b.vy+=(P.w*lim-vt)*0.08*ty;}
+      steg(b);const s=Math.hypot(b.vx,b.vy);if(s>950){b.vx*=950/s;b.vy*=950/s;}});
+    for(let i=0;i<L.length;i++)for(let j=i+1;j<L.length;j++){const a=L[i],b=L[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.01;if(d<2*r){const nx=dx/d,ny=dy/d,o=(2*r-d)/2;a.x-=nx*o;a.y-=ny*o;b.x+=nx*o;b.y+=ny*o;const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rv<0){const im=-1.8*rv/2;a.vx-=im*nx;a.vy-=im*ny;b.vx+=im*nx;b.vy+=im*ny;}}}
+    balls.forEach(b=>{if(b.fade){b.a-=dt*2.5;if(b.a<=0){b.a=0;b.gone=true;}}});
+  }
+  function ball(b,x,y){c.save();c.globalAlpha=b.a;c.translate(x,y);c.fillStyle=b.t.col;c.beginPath();c.arc(0,0,r,0,7);c.fill();c.lineWidth=2;c.strokeStyle='rgba(255,255,255,.45)';c.stroke();c.rotate(b.rot);c.fillStyle=b.t.tx;c.font='900 9px ui-sans-serif,system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(b.t.sh,0,0.5);c.restore();}
+  function draw(ts){
+    c.clearRect(0,0,S,S);const ux=Math.cos(P.A),uy=Math.sin(P.A);
+    c.lineCap='round';c.lineWidth=TH*2;c.strokeStyle='rgba(125,211,252,.6)';c.beginPath();c.moveTo(C.x+ux*(R-2),C.y+uy*(R-2));c.lineTo(C.x+ux*(R-2-STEG),C.y+uy*(R-2-STEG));c.stroke();
+    c.lineCap='butt';c.lineWidth=3;c.strokeStyle='rgba(125,211,252,.32)';for(let k=1;k<8;k++){const a=P.A+k*Math.PI/4;c.beginPath();c.arc(C.x,C.y,R-4,a-0.06,a+0.06);c.stroke();}
+    balls.forEach(b=>{if(!b.gone&&b!==P.tg)ball(b,b.x,b.y);});
+    if(P.tg&&!P.tg.gone){const u=Math.min(1,(ts-P.t0)/380),e=u*u;P.tg.rot+=0.3;ball(P.tg,P.tg.sx+(C.x-P.tg.sx)*e,P.tg.sy+(C.y+R+r+4-P.tg.sy)*e);}
+  }
+  function loop(ts){if(!P.alive||!cv.isConnected){P.alive=false;return;}const dt=Math.min(0.033,(ts-(P.last||ts))/1000);P.last=ts;for(let k=0;k<3;k++)step(dt/3);draw(ts);requestAnimationFrame(loop);}
+  P.drop=()=>{const t=balls.find(b=>b.pick);if(!t||P.tg)return;P.tg=t;t.sx=t.x;t.sy=t.y;P.t0=performance.now();P.state='drop';};
+  P.out=()=>{const t=balls.find(b=>b.pick);if(t)t.gone=true;P.state='stop';balls.forEach(b=>{if(b.gi===gi&&!b.gone)b.fade=true;});};
+  requestAnimationFrame(loop);return P;
+}
 function lotAnim(gi,n,rem,done){
   UI.lotApply=done;lotStop();UI.lotStop=sfxLoop('lottery');const me=gi===ME();
-  const T=TEAMS[G_(gi).team],ar=$('arena');let marked=false;
-  const balls=rem.map(b=>{const t=TEAMS[G_(b).team],me=!marked&&b===gi;if(me)marked=true;return `<div class="lb"${me?' id="lb-pick"':''} style="left:${rint(14,70)}%;top:${rint(14,70)}%;background:${t.col};color:${t.tx};animation-duration:${(.45+Math.random()*.4).toFixed(2)}s;animation-delay:-${Math.random().toFixed(2)}s">${t.sh}</div>`;}).join('');
-  arClear();UI.arDone=false;
+  const T=TEAMS[G_(gi).team],ar=$('arena');
+  arClear();UI.arDone=false;if(UI.lp){UI.lp.alive=false;UI.lp=null;}
   ar.innerHTML=`<div class="ar-bg"></div>
 <div class="ar-top"><div class="kick">Draft-Lotterie</div><div class="h2" style="margin-top:4px">Pick ${n}</div><div class="s mut">${rem.length} Kugel${rem.length>1?'n':''} in der Trommel</div></div>
-<div class="lot"><div class="lot-drum" id="lot-drum">${balls}</div><div class="lot-chute"></div><div class="lot-out" id="lot-out" style="background:${T.col};color:${T.tx}">${T.sh}</div></div>
+<div class="lot"><div class="lot-drum phys" id="lot-drum"><canvas id="lot-cv" style="position:absolute;inset:0;width:100%;height:100%"></canvas></div><div class="lot-chute"></div><div class="lot-out" id="lot-out" style="background:${T.col};color:${T.tx}">${T.sh}</div></div>
 <div class="ar-res" id="lot-res" style="background:${T.col}22;color:${T.col}"><div class="row" style="justify-content:center;gap:10px">${badge(gi)}<div style="text-align:left"><div>Pick ${n}: ${me?'Du!':esc(G_(gi).name)}</div><div class="s mut" style="font-weight:700">${esc(T.name)}</div></div></div></div>
 <div class="ar-btn" id="lot-btn"><button class="btn" onclick="lotDone()">${me?'Rookie wählen':'Weiter'}</button></div>
 <div class="ar-skip" id="ar-skip">Tippen zum Überspringen</div>`;
   ar.classList.remove('hidden');
   ar.onclick=e=>{if(!UI.arDone&&!e.target.closest('.ar-btn'))lotFinish();};
   requestAnimationFrame(()=>ar.classList.add('on'));
-  arAt(1700,()=>{const dr=$('lot-drum'),p=$('lb-pick'),o=$('lot-out');if(dr)dr.classList.add('stop');if(p)p.classList.add('gone');if(o)o.classList.add('drop');lotStop();sfx('ball');});
-  arAt(2400,lotFinish);
+  UI.lp=lotPhys(rem,gi);
+  const MIX=1700+Math.round(2*Math.PI/2.4*1000);
+  arAt(MIX,()=>{if(UI.lp)UI.lp.drop();});
+  arAt(MIX+380,()=>{const o=$('lot-out');if(UI.lp)UI.lp.out();if(o)o.classList.add('drop');lotStop();sfx('ball');});
+  arAt(MIX+1100,lotFinish);
 }
 function lotFinish(){
-  if(UI.arDone)return;UI.arDone=true;arClear();lotStop();
+  if(UI.arDone)return;UI.arDone=true;arClear();lotStop();if(UI.lp)UI.lp.out();
   const dr=$('lot-drum'),p=$('lb-pick'),o=$('lot-out');
   if(dr)dr.classList.add('stop');if(p)p.classList.add('gone');if(o&&!o.classList.contains('drop'))o.classList.add('shown');
   ['lot-res','lot-btn'].forEach(id=>{const e=$(id);if(e)e.classList.add('on');});
   const sk=$('ar-skip');if(sk)sk.style.opacity=0;
 }
 function lotDone(){
-  arClear();lotStop();const ar=$('arena');ar.onclick=null;ar.classList.add('hidden');ar.classList.remove('on');ar.innerHTML='';
+  arClear();lotStop();if(UI.lp){UI.lp.alive=false;UI.lp=null;}const ar=$('arena');ar.onclick=null;ar.classList.add('hidden');ar.classList.remove('on');ar.innerHTML='';
   const f=UI.lotApply;UI.lotApply=null;if(f)f();
 }
 function draftTap(i){
@@ -1735,7 +1769,7 @@ async function createRoom(){
   ST={v:3,phase:'lobby',season:1,gms:[],order:[],decks:{L:shuffle(IDS('L')),FA:shuffle(IDS('S').concat(IDS('B'))),R:shuffle(IDS('R'))},
     cap:null,fa:null,dr:null,sched:[],md:0,ev:null,seeds:null,res:null,finalLoser:null,midTrade:false,tr:null,fx:[],fxs:0,ver:0,
     net:{code:code,host:NET.pid,hostUid:NET.uid||'',ack:{},lobby:{n:4,players:[{pid:NET.pid,uid:NET.uid||'',name:name,team:UI.net.team|0}]}}};
-  UI.fxSeen=0;UI.fxQ=[];UI.fxBusy=false;UI.lastPhase=null;UI.hosting=code;kvSet('tp_hosting',code);
+  UI.fxSeen=0;UI.fxQ=[];UI.fxBusy=false;UI.lastPhase=null;UI.hosting=code;roomAdd({code:code,role:'host',name:name,team:UI.net.team|0});
   hostListen();commitNet();
 }
 async function joinRoom(code){
@@ -1745,28 +1779,29 @@ async function joinRoom(code){
   UI.busy=true;render();let d;
   try{d=await NET.db.doc('tp/'+code).get();}catch(e){UI.busy=false;toast(dbErrText(e));render();return;}
   UI.busy=false;
-  if(!d.exists){toast('Raum '+code+' nicht gefunden');if(UI.joined&&UI.joined.code===code){UI.joined=null;kvDel('tp_joined');}render();return;}
+  if(!d.exists){toast('Raum '+code+' nicht gefunden');if(UI.joined&&UI.joined.code===code)UI.joined=null;UI.roomInfo=UI.roomInfo||{};UI.roomInfo[code]={gone:1};render();return;}
   const v=d.data()||{};
-  if(v.host===NET.pid||(v.hostUid&&NET.uid&&v.hostUid===NET.uid&&UI.hosting===code)){UI.hosting=code;resumeHost();return;}
+  if(v.host===NET.pid||(v.hostUid&&NET.uid&&v.hostUid===NET.uid&&(UI.hosting===code||ROOMS.some(x=>x.code===code&&x.role==='host')))){UI.hosting=code;resumeHost();return;}
   netStop();NET.code=code;NET.on=true;NET.host=false;NET.ver=-1;NET.out=[];NET.seq=Date.now();NET.claimVer=null;NET.left=false;
   ST=null;UI.lastPhase=null;UI.fxQ=[];UI.fxBusy=false;UI.pending=false;
-  UI.joined={code:code,name:name,team:UI.net.team|0};kvSet('tp_joined',JSON.stringify(UI.joined));
+  UI.joined={code:code,name:name,team:UI.net.team|0};roomAdd({code:code,role:'guest',name:name,team:UI.net.team|0});
   render();guestListen();sendInbox();
 }
 async function resumeHost(){
   const code=UI.hosting;if(!code||NET.status!=='ok')return;
   let d;try{d=await NET.db.doc('tp/'+code).get();}catch(e){toast(dbErrText(e));return;}
-  if(!d.exists){toast('Raum '+code+' wurde nicht gefunden');UI.hosting=null;kvDel('tp_hosting');render();return;}
+  if(!d.exists){toast('Raum '+code+' wurde nicht gefunden');UI.hosting=null;UI.roomInfo=UI.roomInfo||{};UI.roomInfo[code]={gone:1};render();return;}
   let s;try{s=JSON.parse(d.data().s);}catch(e){toast('Spielstand des Raums ist beschädigt');return;}
   if(s.net.hostUid&&NET.uid&&s.net.hostUid!==NET.uid){toast('Nur der ursprüngliche Host kann den Raum fortsetzen');return;}
   const old=s.net.host;
   (s.gms||[]).forEach(g=>{if(g.pid===old)g.pid=NET.pid;});(s.net.lobby.players||[]).forEach(p=>{if(p.pid===old)p.pid=NET.pid;});
   s.net.host=NET.pid;s.fx=s.fx||[];
   netStop();NET.code=code;NET.on=true;NET.host=true;NET.uids={};ST=s;UI.fxSeen=s.fxs||0;UI.fxQ=[];UI.fxBusy=false;UI.lastPhase=null;
-  hostListen();commitNet();toast('Raum '+code+' läuft wieder');
+  hostListen();commitNet();roomTouch(code);toast('Raum '+code+' läuft wieder');
 }
 function rejoin(){const j=UI.joined;if(!j)return;UI.net.name=j.name;UI.net.team=j.team;joinRoom(j.code);}
 function leaveOnline(){
+  if(NET.on&&NET.code){const k=ST&&ST.gms&&ST.gms.length?ME():-1;roomTouch(NET.code,k>=0?{team:G_(k).team}:null);}
   if(NET.on&&!NET.host&&ST&&ST.phase==='lobby'){NET.left=true;sendInbox();}
   netStop();NET.on=false;NET.host=false;ST=null;UI.pending=false;clearTimeout(UI.pendT);UI.fxQ=[];UI.fxBusy=false;UI.lastPhase=null;
   arClear();const ar=$('arena');ar.onclick=null;ar.classList.add('hidden');ar.classList.remove('on');ar.innerHTML='';
@@ -2511,7 +2546,7 @@ function oConfirmBet(){
 
 const OVIEWS={lobby:oLobby,dice:oDice,captain:oCaptain,fa:oFA,draft:oDraft,pre_done:oPreDone,hub:oHub,events:oEvents,trade_mid:oTradeMid,season_end:oSeasonEnd,trade:oTrade,release:oRelease,season:oSeasonRes,champion:oChampion};
 function oClosed(){app(`${phaseHead('Online','Spiel beendet','Der Host hat das Spiel in Raum '+esc(NET.code)+' beendet.')}<div class="cta"><div class="in"><button class="btn" onclick="forgetRoom();leaveOnline()">Zum Hauptmenü</button></div></div>`);}
-function forgetRoom(){if(UI.joined&&UI.joined.code===NET.code){UI.joined=null;kvDel('tp_joined');}if(UI.hosting===NET.code){UI.hosting=null;kvDel('tp_hosting');}}
+function forgetRoom(){if(UI.joined&&UI.joined.code===NET.code)UI.joined=null;if(UI.hosting===NET.code)UI.hosting=null;roomDel(NET.code);}
 function startSheet(){
   const L=ST.net.lobby,total=Math.max(L.n,L.players.length),bots=total-L.players.length;
   if(!bots){act('start');return;}
@@ -2529,7 +2564,8 @@ async function quitOnline(){
 }
 function toMenuOffline(){
   clearTimeout(botT);clearTimeout(saveT);
-  if(ST){kvSet(SAVE_KEY,JSON.stringify(ST));UI.saved=JSON.parse(JSON.stringify(ST));}
+  if(ST){if(!UI.slot&&SLOTS.length<SLOT_MAX){UI.slot=newSlotId();SLOTS.unshift(slotMeta(UI.slot,ST));slotsSave();}if(UI.slot){kvSet(slotKey(UI.slot),JSON.stringify(ST));slotTouch(UI.slot,ST);}}
+  UI.slot=null;
   ST=null;UI.m=null;UI.tr=null;UI.lu=null;arClear();const ar=$('arena');ar.onclick=null;ar.classList.add('hidden');ar.classList.remove('on');ar.innerHTML='';
   UI.shLock=false;closeSheet();UI.screen='menu';window.scrollTo(0,0);render();
 }
@@ -2602,21 +2638,32 @@ function audPick(kind){
   for(const k of order){if(k==='title'){if(AUD.tracks.title[0])return{t:AUD.tracks.title[0],k:'title'};continue;}const t=audNext(k);if(t)return{t:t,k:k};}
   return null;
 }
+function audKill(a){if(!a)return;clearInterval(a._fi);try{a.pause();a.removeAttribute('src');a.load();}catch(e){}}
 function audStart(kind){
-  const pk=audPick(kind),t=pk&&pk.t,src=pk?pk.k:kind,old=AUD.el;AUD.el=null;
-  if(old)audFade(old,0,700,()=>{old.pause();old.removeAttribute('src');try{old.load();}catch(e){}});
-  AUD.cur=t||null;audShowSong();
+  AUD.ps=AUD.ps||{};const old=AUD.el,keep=AUD.ps[kind];
+  if(old&&(!keep||keep.el!==old)){audFade(old,0,700,()=>{if(AUD.el!==old)old.pause();});}
+  if(keep&&keep.el&&!keep.el.ended){
+    const a=keep.el;AUD.el=a;AUD.cur=keep.t;audShowSong();const p=a.play();if(p&&p.catch)p.catch(()=>{});audFade(a,1,900);
+    if(UI.screen==='settings'&&!ST)render();return;
+  }
+  audNewTrack(kind);
+}
+function audNewTrack(kind){
+  AUD.ps=AUD.ps||{};const prev=AUD.ps[kind]&&AUD.ps[kind].el,pk=audPick(kind),t=pk&&pk.t,src=pk?pk.k:kind;
+  if(prev){if(AUD.el===prev){AUD.el=null;audFade(prev,0,700,()=>audKill(prev));}else audKill(prev);}
+  else if(AUD.el){const o=AUD.el;AUD.el=null;audFade(o,0,700,()=>{if(AUD.el!==o)o.pause();});}
+  AUD.ps[kind]=null;AUD.cur=t||null;audShowSong();
   if(!t)return;
   const a=new Audio(t.src);a.preload='auto';a.loop=src==='title'||(AUD.tracks[src]||[]).length<2;a._g=0;
   if(AUD.ctx){try{const s=AUD.ctx.createMediaElementSource(a),g=AUD.ctx.createGain();g.gain.value=0;s.connect(g);g.connect(AUD.ctx.destination);a._gn=g;}catch(e){}}
   audLvl(a);
-  a.addEventListener('ended',()=>{if(AUD.el===a&&AUD.mode===kind)audStart(kind);});
-  a.addEventListener('error',()=>{if(AUD.el===a&&AUD.mode===kind&&src!=='title'&&(AUD.tracks[src]||[]).length>1)setTimeout(()=>{if(AUD.el===a)audStart(kind);},800);});
-  AUD.el=a;const p=a.play();if(p&&p.catch)p.catch(()=>{});
+  a.addEventListener('ended',()=>{if(AUD.el===a&&AUD.mode===kind)audNewTrack(kind);});
+  a.addEventListener('error',()=>{if(AUD.el===a&&AUD.mode===kind&&src!=='title'&&(AUD.tracks[src]||[]).length>1)setTimeout(()=>{if(AUD.el===a)audNewTrack(kind);},800);});
+  AUD.ps[kind]={el:a,t:t};AUD.el=a;const p=a.play();if(p&&p.catch)p.catch(()=>{});
   audFade(a,1,900);
   if(UI.screen==='settings'&&!ST)render();
 }
-function audSkip(){if(AUD.mode&&AUD.mode!=='title')audStart(AUD.mode);}
+function audSkip(){if(AUD.mode&&AUD.mode!=='title')audNewTrack(AUD.mode);}
 function audShowSong(){const n=document.getElementById('t-song');if(n)n.textContent=AUD.cur&&AUD.mode==='title'?'🎵 '+AUD.cur.title+' – '+AUD.cur.artist:'';}
 function setVol(k,v){SET[k]=+v;const e=document.getElementById('vol-'+k);if(e)e.textContent=v+'%';audApplyVol();saveSettings();}
 function titleTap(){audUnlock();screen('menu');}
@@ -2669,6 +2716,85 @@ ${AUD.cur?`<div class="item mt"><div style="font-size:20px">▶️</div><div cla
 }
 audDiscover();
 
+/* ═════════════ SPIELSTÄNDE (offline Slots & Online-Räume) ═════════════ */
+const SLOT_MAX=8;
+let SLOTS=[],ROOMS=[];
+const PH_NAME={lobby:'Warteraum',dice:'Preseason',captain:'Preseason',fa:'Free Agency',draft:'Draft',pre_done:'Preseason',hub:'Saison',lineup:'Saison',match:'Saison',events:'Saison',trade:'Tradetime',trade_mid:'Tradetime',release:'Offseason',season:'Saisonende',season_end:'Saisonende',champion:'Beendet'};
+function slotKey(id){return 'tp_slot_'+id;}
+function newSlotId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function slotMeta(id,s,name){const g=s.gms[0];return{id:id,name:name||TEAMS[g.team].name,team:g.team,season:s.season,rings:g.rings,n:s.gms.length,phase:s.phase,at:Date.now()};}
+function slotsSave(){kvSet('tp_slots',JSON.stringify(SLOTS));}
+function slotTouch(id,s){const m=SLOTS.find(x=>x.id===id);if(!m||!s||!s.gms||!s.gms.length)return;const g=s.gms[0];Object.assign(m,{team:g.team,season:s.season,rings:g.rings,n:s.gms.length,phase:s.phase,at:Date.now()});SLOTS.sort((a,b)=>b.at-a.at);slotsSave();}
+function slotDel(id){SLOTS=SLOTS.filter(x=>x.id!==id);kvDel(slotKey(id));slotsSave();}
+function fmtAt(t){try{return new Date(t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+async function slotsLoad(){
+  try{const v=await kvGet('tp_slots');SLOTS=v?JSON.parse(v):[];}catch(e){SLOTS=[];}
+  if(!Array.isArray(SLOTS))SLOTS=[];
+  const old=await loadSave();
+  if(old&&old.v===2&&Array.isArray(old.gms)&&old.gms.length&&old.phase){const id=newSlotId();kvSet(slotKey(id),JSON.stringify(old));SLOTS.push(slotMeta(id,old));slotsSave();wipeSave();}
+  SLOTS.sort((a,b)=>b.at-a.at);
+  try{const v=await kvGet('tp_rooms');ROOMS=v?JSON.parse(v):[];}catch(e){ROOMS=[];}
+  if(!Array.isArray(ROOMS))ROOMS=[];
+  const h=await kvGet('tp_hosting');if(h&&!ROOMS.some(x=>x.code===h))ROOMS.push({code:h,role:'host',name:'',team:0,at:Date.now()-1});
+  try{const j=JSON.parse(await kvGet('tp_joined')||'null');if(j&&j.code&&!ROOMS.some(x=>x.code===j.code))ROOMS.push({code:j.code,role:'guest',name:j.name||'',team:j.team|0,at:Date.now()-2});}catch(e){}
+  kvDel('tp_hosting');kvDel('tp_joined');ROOMS.sort((a,b)=>b.at-a.at);roomsSave();
+  if(ROOMS[0]&&ROOMS[0].name&&!UI.net.name){UI.net.name=ROOMS[0].name;UI.net.team=ROOMS[0].team|0;}
+}
+async function loadSlot(id){
+  const v=await kvGet(slotKey(id));let s=null;try{s=v?JSON.parse(v):null;}catch(e){}
+  if(!s||!Array.isArray(s.gms)||!s.gms.length){toast('Dieser Spielstand ist leer oder beschädigt');slotDel(id);render();return;}
+  netStop();NET.on=false;ST=s;UI.slot=id;UI.saved=null;closeSheet();go(ST.phase==='match'?'hub':ST.phase);
+}
+function resume(){if(SLOTS[0])loadSlot(SLOTS[0].id);}
+function roomsSave(){kvSet('tp_rooms',JSON.stringify(ROOMS));}
+function roomAdd(r){const old=ROOMS.find(x=>x.code===r.code);ROOMS=ROOMS.filter(x=>x.code!==r.code);ROOMS.unshift(Object.assign({},old||{},r,{at:Date.now()}));ROOMS=ROOMS.slice(0,20);roomsSave();}
+function roomTouch(code,patch){const r=ROOMS.find(x=>x.code===code);if(!r)return;Object.assign(r,patch||{},{at:Date.now()});ROOMS.sort((a,b)=>b.at-a.at);roomsSave();}
+function roomDel(code){ROOMS=ROOMS.filter(x=>x.code!==code);roomsSave();if(UI.roomInfo)delete UI.roomInfo[code];}
+function roomGo(code){
+  const r=ROOMS.find(x=>x.code===code);if(!r)return;closeSheet();
+  if(r.role==='host'){UI.hosting=code;resumeHost();}
+  else{UI.net.name=r.name||UI.net.name;UI.net.team=r.team|0;UI.net.code=code;joinRoom(code);}
+}
+async function roomsInfo(){
+  if(NET.status!=='ok'||!NET.db||UI.roomInfoBusy)return;UI.roomInfoBusy=true;UI.roomInfo=UI.roomInfo||{};
+  for(const r of ROOMS){
+    try{const d=await NET.db.doc('tp/'+r.code).get();
+      if(!d.exists){UI.roomInfo[r.code]={gone:1};continue;}
+      const v=d.data()||{};let st=null;try{st=JSON.parse(v.s);}catch(e){}
+      UI.roomInfo[r.code]=st?{phase:st.phase,season:st.season,closed:!!st.closed,humans:(st.gms&&st.gms.length?st.gms.filter(g=>!g.bot).length:(st.net&&st.net.lobby?st.net.lobby.players.length:1)),teams:st.gms&&st.gms.length?st.gms.length:(st.net&&st.net.lobby?st.net.lobby.n:0)}:{};
+    }catch(e){}
+  }
+  UI.roomInfoBusy=false;UI.roomInfoAt=Date.now();if(!ST&&UI.screen==='saves')render();
+}
+function slotRow(m){return `<div class="item tap" onclick="slotSheet('${m.id}')">${badgeT(m.team)}<div class="grow"><div class="b">${esc(m.name)}</div><div class="s mut">${PH_NAME[m.phase]||'Spiel'} · Saison ${m.season} · 💍 ${m.rings} · ${m.n} Teams</div><div class="s mut">Zuletzt gespielt ${fmtAt(m.at)}</div></div><div class="mut b" style="font-size:20px">›</div></div>`;}
+function roomRow(r){
+  const i=(UI.roomInfo||{})[r.code],st=!i?'':(i.gone?'<span style="color:var(--bad)">Raum existiert nicht mehr</span>':(i.closed?'<span style="color:var(--bad)">Spiel beendet</span>':`${PH_NAME[i.phase]||'Spiel'}${i.season&&i.phase!=='lobby'?' · Saison '+i.season:''}${i.teams?' · '+i.teams+' Teams':''}`));
+  return `<div class="item tap" onclick="roomSheet('${r.code}')">${badgeT(r.team|0)}<div class="grow"><div class="b">Raum ${esc(r.code)} <span class="chip ${r.role==='host'?'acc':''}" style="padding:1px 7px">${r.role==='host'?'Host':'Mitspieler'}</span></div><div class="s mut">${st||'…'}</div><div class="s mut">${r.name?'Als '+esc(r.name)+' · ':''}zuletzt ${fmtAt(r.at)}</div></div><div class="mut b" style="font-size:20px">›</div></div>`;
+}
+function slotSheet(id){
+  const m=SLOTS.find(x=>x.id===id);if(!m)return;
+  openSheet(`<div class="row">${badgeT(m.team,1)}<div class="grow"><div class="h2">${esc(m.name)}</div><div class="s mut">${PH_NAME[m.phase]||'Spiel'} · Saison ${m.season} · 💍 ${m.rings} · ${m.n} Teams</div></div></div>
+<div class="col mt"><button class="btn ok" data-act="go">▶️ Fortsetzen</button><button class="btn sec" data-act="rn">✏️ Umbenennen</button><button class="btn bad" data-act="del">🗑 Löschen</button><button class="btn sec" data-act="x">Schließen</button></div>`,
+  {go:()=>loadSlot(id),x:closeSheet,
+   rn:()=>openSheet(`<div class="h2">Spielstand umbenennen</div><input class="inp mt" id="slot-name" maxlength="28" value="${esc(m.name)}"><div class="col mt"><button class="btn ok" data-act="y">Speichern</button><button class="btn sec" data-act="x">Abbrechen</button></div>`,{y:()=>{const v=($('slot-name').value||'').trim().slice(0,28);if(v){m.name=v;slotsSave();}closeSheet();render();},x:()=>slotSheet(id)}),
+   del:()=>openSheet(`<div style="font-size:44px;text-align:center">🗑</div><div class="h2" style="text-align:center">„${esc(m.name)}“ löschen?</div><div class="sub mt" style="text-align:center">Der Spielstand wird endgültig gelöscht.</div><div class="col mt"><button class="btn bad" data-act="y">Ja, löschen</button><button class="btn sec" data-act="x">Abbrechen</button></div>`,{y:()=>{slotDel(id);closeSheet();render();},x:()=>slotSheet(id)})});
+}
+function roomSheet(code){
+  const r=ROOMS.find(x=>x.code===code);if(!r)return;const i=(UI.roomInfo||{})[code]||{},dead=i.gone||i.closed,can=NET.status==='ok';
+  openSheet(`<div class="row">${badgeT(r.team|0,1)}<div class="grow"><div class="h2">Raum ${esc(code)}</div><div class="s mut">${r.role==='host'?'Du bist Host':'Du bist Mitspieler'}${r.name?' · '+esc(r.name):''}</div></div></div>
+${dead?`<div class="res" style="background:rgba(251,113,133,.12);color:var(--bad);font-size:13px">${i.gone?'Diesen Raum gibt es nicht mehr.':'Dieses Spiel wurde beendet.'}</div>`:''}
+${can?'':'<div class="s mut mt">Online ist hier nicht verfügbar.</div>'}
+<div class="col mt">${dead?'':`<button class="btn ok" data-act="go" ${can?'':'disabled'}>${r.role==='host'?'▶️ Als Host fortsetzen':'▶️ Wieder beitreten'}</button>`}<button class="btn sec" data-act="cp">📋 Code kopieren</button><button class="btn bad" data-act="del">Aus der Liste entfernen</button><button class="btn sec" data-act="x">Schließen</button></div>
+<div class="s mut mt" style="text-align:center">Entfernen löscht nur den Eintrag auf diesem Gerät, nicht das Spiel deiner Mitspieler.</div>`,
+  {go:()=>roomGo(code),x:closeSheet,cp:()=>{try{navigator.clipboard.writeText(code).then(()=>toast('Code '+code+' kopiert'),()=>toast('Raumcode: '+code));}catch(e){toast('Raumcode: '+code);}},del:()=>{roomDel(code);closeSheet();render();}});
+}
+function vSaves(){
+  if(!UI.roomInfoAt||Date.now()-UI.roomInfoAt>30000)roomsInfo();
+  app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button><div class="mt">${phaseHead('Menü','Spielstände',`Offline speicherst du bis zu ${SLOT_MAX} Spiele auf diesem Gerät. Online-Spiele liegen im Raum und bleiben dort, bis der Host sie beendet.`)}</div>
+<div class="panel"><div class="lbl">Offline <span>${SLOTS.length}/${SLOT_MAX}</span></div><div class="col">${SLOTS.map(slotRow).join('')||'<div class="s mut">Noch keine Offline-Spielstände.</div>'}</div>${SLOTS.length<SLOT_MAX?`<button class="btn sec mt" onclick="screen('start')">＋ Neues Offline-Spiel</button>`:'<div class="s mut mt">Alle Plätze belegt – lösche einen Spielstand für ein neues Spiel.</div>'}</div>
+<div class="panel"><div class="lbl">Online-Räume <span>${ROOMS.length}</span></div><div class="col">${ROOMS.map(roomRow).join('')||'<div class="s mut">Noch keine Online-Räume.</div>'}</div><button class="btn sec mt" onclick="screen('online')">＋ Raum erstellen oder beitreten</button></div>`);
+}
+
 /* ═════════════ VIEWS & START ═════════════ */
 const VIEWS={start:vStart,dice:vDice,captain:vCaptain,fa:vFA,draft:vDraft,hub:vHub,lineup:vLineup,match:vMatch,events:vEvents,season:vSeason,champion:vChampion,trade:vTrade,release:vRelease};
 $('sheet').addEventListener('click',e=>{
@@ -2676,16 +2802,10 @@ $('sheet').addEventListener('click',e=>{
   if(b){if(b.disabled)return;const f=UI.sh[b.dataset.act];if(f)f();return;}
   if(e.target.id==='sheet'&&!UI.shLock)closeSheet();
 });
-(async function(){
-  UI.hosting=await kvGet('tp_hosting');
-  try{const j=await kvGet('tp_joined');UI.joined=j?JSON.parse(j):null;}catch(e){UI.joined=null;}
-  if(UI.joined){UI.net.name=UI.joined.name||'';UI.net.team=UI.joined.team|0;}
-  if(!ST&&!NET.on)render();
-})();
 render();
 if(LOGO_IMG){['icon','apple-touch-icon'].forEach(r=>{const l=document.createElement('link');l.rel=r;l.href=LOGO_IMG;document.head.appendChild(l);});}
 netInit();
-loadSave().then(s=>{if(s&&s.v===2&&Array.isArray(s.gms)&&s.gms.length&&s.phase&&!ST){UI.saved=s;render();}});
+slotsLoad().then(()=>{if(!ST&&!NET.on)render();});
 </script>
 </body>
 </html>

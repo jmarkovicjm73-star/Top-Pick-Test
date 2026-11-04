@@ -114,8 +114,34 @@ button.chip{cursor:pointer;padding:7px 11px}
 .court.full:before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px solid rgba(255,255,255,.09)}
 .court.full:after{content:'';position:absolute;left:50%;top:50%;width:84px;height:84px;border:1px solid rgba(255,255,255,.07);border-radius:50%;transform:translate(-50%,-50%)}
 .crow{display:flex;justify-content:center;gap:8px;margin:4px 0;position:relative;z-index:1}
-.cs{width:64px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cs{width:var(--cw);display:flex;flex-direction:column;align-items:center;gap:2px}
 .cs .lab{font-size:9px;font-weight:800}
+:root{--cw:clamp(64px,min(calc((100vw - 44px) / 3),calc((100vh - 260px) / 5.6)),120px)}
+@supports (height:100dvh){:root{--cw:clamp(64px,min(calc((100vw - 44px) / 3),calc((100dvh - 260px - env(safe-area-inset-bottom,0px)) / 5.6)),120px)}}
+.hcap{display:none}.stb{display:none}
+body.mm #hdr .hst{display:none}
+body.mm #hdr .in{padding:6px 12px}
+body.mm #hdr .htop{gap:8px}
+body.mm #hdr .badge{width:26px;height:26px;border-radius:8px;font-size:8px}
+body.mm #hdr .tn{font-size:13px}
+body.mm #hdr .ts{display:none}
+body.mm #hdr .ib{width:32px;height:32px;border-radius:9px;font-size:14px}
+body.mm .hcap{display:inline-flex}
+body.mm #app{padding-top:8px;padding-left:10px;padding-right:10px}
+body.mm .scoreb{padding:6px 10px;border-radius:12px}
+body.mm .scoreb .sc{font-size:22px}
+body.mm .scoreb .badge{width:26px;height:26px;border-radius:8px;font-size:8px}
+body.mm .scoreb .s.mut{display:none}
+body.mm .scoreb+.row{margin-top:4px;font-size:11px}
+body.mm .court{margin-top:6px;padding:6px 4px}
+body.mm .court .crow{margin:3px 0;gap:8px}
+body.mm .court>div[style*="height:12px"]{height:4px!important}
+body.mm .hl{font-size:9px;margin:0}
+body.mm .cs .lab{display:none}
+body.mm .cs .cw{position:relative}
+body.mm .stb{display:flex;position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#06121d;border:2px solid #0a1429;z-index:2}
+.stb.w{background:var(--ok)}.stb.l{background:var(--bad)}
+
 .hl{text-align:center;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);position:relative;z-index:1;margin:2px 0}
 .empty{width:100%;aspect-ratio:5/7;border-radius:12px;border:2px dashed rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--mut)}
 .scoreb{display:flex;align-items:center;justify-content:space-between;background:var(--p2);border:1px solid var(--ln);border-radius:14px;padding:10px 12px;gap:8px}
@@ -608,7 +634,8 @@ function go(ph){
   if(ph==='events')evReveal();
   if((ph==='season'||ph==='champion')&&ST.res&&ST.res.champ===0)setTimeout(()=>confetti(ph==='champion'?220:140),450);
 }
-function render(){audSync();renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
+function isMatchView(){if(!ST)return false;if(!NET.on)return ST.phase==='match'&&!!UI.m;if(ST.phase!=='hub'||UI.view==='hub')return false;const k=myGame();if(k<0)return false;const G=curMd().games[k];return !!G&&G.st==='live';}
+function render(){audSync();document.body.classList.toggle('mm',isMatchView());renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
 function seasonLabel(){
   const p=ST.phase;
   if(p==='dice'||p==='captain'||p==='pre_done')return 'Preseason';
@@ -625,7 +652,7 @@ function renderHeader(){
   const k=ST?ME():-1;
   if(!ST||k<0||ST.phase==='lobby'){h.style.display='none';h.innerHTML='';return;}
   const me=G_(k),t=TEAMS[me.team];h.style.display='block';
-  h.innerHTML=`<div class="in"><div class="htop">${badge(k)}<div class="grow"><div class="tn">${esc(t.name)}</div><div class="ts">${esc(me.name)} · ${seasonLabel()}</div></div><button class="ib" onclick="menuSheet()">☰</button></div>
+  h.innerHTML=`<div class="in"><div class="htop">${badge(k)}<div class="grow"><div class="tn">${esc(t.name)}</div><div class="ts">${esc(me.name)} · ${seasonLabel()}</div></div><span class="chip hcap">💰 Cap ${capOf(me)}</span><button class="ib" onclick="menuSheet()">☰</button></div>
 <div class="hst">${NET.on?`<span class="chip ${UI.pending?'bad':'acc'}">${UI.pending?'⏳ wird übertragen':(NET.host?'🌐 Host':'🌐 Online')} · ${esc(NET.code)}</span>`:''}<span class="chip">💍 ${me.rings}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">💰 Cap ${capOf(me)}</span><span class="chip">🎟 ${me.trade}</span><span class="chip">🎱 ${me.picks}</span>${me.ringHolder?'<span class="chip ok">Ringträger</span>':''}</div></div>`;
 }
 
@@ -1162,7 +1189,7 @@ function mSlot(side,i){
   const isAtt=m.att===i&&((side==='me')===m.myTurn),isDef=m.def===i&&((side==='op')===m.myTurn);
   if(m.phase==='def'&&isAtt)c+=' glow';
   if(m.phase==='duel'&&(isAtt||isDef))c+=' ghost';
-  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="tapSlot('${side}',${i})">${side==='op'&&!e.rev?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1})}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
+  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="tapSlot('${side}',${i})">${side==='op'&&!e.rev?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1})}${e.used?`<div class="stb ${e.won?'w':'l'}">${e.won?'✓':'✗'}</div>`:''}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
 }
 function vMatch(){
   const m=UI.m;if(!m){ST.phase='hub';render();return;}
@@ -2230,7 +2257,7 @@ function nSlot(G,k,side,i){
   else if(!mine&&myTurn&&UI.sel&&!UI.pending)c+=' tgt';
   if(mine&&UI.sel&&UI.sel.att===i)c+=' glow';
   const hid=!mine&&!e.rev;
-  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="nTap(${k},'${side}',${i})">${hid?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1})}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
+  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="nTap(${k},'${side}',${i})">${hid?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1})}${e.used?`<div class="stb ${e.won?'w':'l'}">${e.won?'✓':'✗'}</div>`:''}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
 }
 function nTap(k,side,i){
   const G=curMd().games[k];if(!G||!G.m)return;const m=G.m,me=ME(),s=sideOf(G,me),o=s==='h'?'a':'h';

@@ -345,10 +345,10 @@ const FIREBASE_CONFIG={
   appId:'1:46203557580:web:51e16d091ed80a88a19469'
 };
 /* 3) MUSIK & SOUNDS: Lege MP3-Dateien ins Repository (neben die index.html oder in einen Ordner "musik"):
-      ladescreen_Künstler_Songtitel.mp3  → läuft auf dem Startbildschirm
-      menu_Künstler_Songtitel.mp3        → wechselnde Songs ab dem Hauptmenü (beliebig viele)
+      ladescreen_Künstler_Songtitel.mp3  → läuft auf dem Startbildschirm und in allen Menüs
+      menu_Künstler_Songtitel.mp3        → wechselnde Songs, sobald ein Spiel läuft (beliebig viele)
       Künstler und Titel werden aus dem Dateinamen gelesen und unter Einstellungen → Credits angezeigt.
-      Optional eigene Effekte: sfx_klick, sfx_wuerfel, sfx_karte, sfx_punkt, sfx_fehlwurf,
+      Optional eigene Effekte: sfx_wuerfel, sfx_lotterie (Trommel, läuft in Schleife), sfx_karte, sfx_punkt, sfx_fehlwurf,
       sfx_muenze, sfx_kugel, sfx_sieg, sfx_niederlage, sfx_sirene (.mp3) ersetzen die eingebauten Töne.
       Auf GitHub Pages werden die Dateien automatisch gefunden. Auf anderen Webseiten trage sie hier ein,
       z. B. const MUSIC_FILES=['ladescreen_Max Muster_Intro.mp3','menu_Max Muster_Song 1.mp3']; */
@@ -976,7 +976,7 @@ function drawBall(){
   lotAnim(gi,n,rem,UI.lotApply);
 }
 function lotAnim(gi,n,rem,done){
-  UI.lotApply=done;const me=gi===ME();
+  UI.lotApply=done;lotStop();UI.lotStop=sfxLoop('lottery');const me=gi===ME();
   const T=TEAMS[G_(gi).team],ar=$('arena');let marked=false;
   const balls=rem.map(b=>{const t=TEAMS[G_(b).team],me=!marked&&b===gi;if(me)marked=true;return `<div class="lb"${me?' id="lb-pick"':''} style="left:${rint(14,70)}%;top:${rint(14,70)}%;background:${t.col};color:${t.tx};animation-duration:${(.45+Math.random()*.4).toFixed(2)}s;animation-delay:-${Math.random().toFixed(2)}s">${t.sh}</div>`;}).join('');
   arClear();UI.arDone=false;
@@ -989,18 +989,18 @@ function lotAnim(gi,n,rem,done){
   ar.classList.remove('hidden');
   ar.onclick=e=>{if(!UI.arDone&&!e.target.closest('.ar-btn'))lotFinish();};
   requestAnimationFrame(()=>ar.classList.add('on'));
-  arAt(1700,()=>{const dr=$('lot-drum'),p=$('lb-pick'),o=$('lot-out');if(dr)dr.classList.add('stop');if(p)p.classList.add('gone');if(o)o.classList.add('drop');sfx('ball');});
+  arAt(1700,()=>{const dr=$('lot-drum'),p=$('lb-pick'),o=$('lot-out');if(dr)dr.classList.add('stop');if(p)p.classList.add('gone');if(o)o.classList.add('drop');lotStop();sfx('ball');});
   arAt(2400,lotFinish);
 }
 function lotFinish(){
-  if(UI.arDone)return;UI.arDone=true;arClear();
+  if(UI.arDone)return;UI.arDone=true;arClear();lotStop();
   const dr=$('lot-drum'),p=$('lb-pick'),o=$('lot-out');
   if(dr)dr.classList.add('stop');if(p)p.classList.add('gone');if(o&&!o.classList.contains('drop'))o.classList.add('shown');
   ['lot-res','lot-btn'].forEach(id=>{const e=$(id);if(e)e.classList.add('on');});
   const sk=$('ar-skip');if(sk)sk.style.opacity=0;
 }
 function lotDone(){
-  arClear();const ar=$('arena');ar.onclick=null;ar.classList.add('hidden');ar.classList.remove('on');ar.innerHTML='';
+  arClear();lotStop();const ar=$('arena');ar.onclick=null;ar.classList.add('hidden');ar.classList.remove('on');ar.innerHTML='';
   const f=UI.lotApply;UI.lotApply=null;if(f)f();
 }
 function draftTap(i){
@@ -2512,7 +2512,7 @@ function renderOnline(){
 /* ═════════════ AUDIO: Musik & Soundeffekte ═════════════ */
 var AUD={ctx:null,sfxOut:null,unlocked:false,ready:false,tracks:{title:[],menu:[]},sfxFiles:{},buf:{},el:null,mode:null,cur:null,queue:[],duck:1,titleHeard:false};
 if(SET.music==null)SET.music=60;if(SET.sfx==null)SET.sfx=70;
-const SFX_FILE={klick:'click',wuerfel:'dice',karte:'flip',punkt:'point',fehlwurf:'miss',muenze:'coin',kugel:'ball',sieg:'win',niederlage:'lose',sirene:'buzzer'};
+const SFX_FILE={lotterie:'lottery',klick:'click',wuerfel:'dice',karte:'flip',punkt:'point',fehlwurf:'miss',muenze:'coin',kugel:'ball',sieg:'win',niederlage:'lose',sirene:'buzzer'};
 function trackInfo(path){
   const f=path.split('/').pop(),base=f.replace(/\.(mp3|m4a|ogg|wav|aac)$/i,''),m=base.match(/^(ladescreen|menu)_(.+)$/i);if(!m)return null;
   const parts=m[2].split('_').map(x=>x.trim()).filter(Boolean);
@@ -2543,8 +2543,8 @@ async function audDiscover(){
 }
 function audUnlock(){
   try{
-    if(!AUD.ctx){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;AUD.ctx=new C();AUD.sfxOut=AUD.ctx.createGain();AUD.sfxOut.connect(AUD.ctx.destination);audApplyVol();}
-    if(AUD.ctx.state==='suspended')AUD.ctx.resume();
+    if(!AUD.ctx){const C=window.AudioContext||window.webkitAudioContext;if(C){AUD.ctx=new C();AUD.sfxOut=AUD.ctx.createGain();AUD.sfxOut.connect(AUD.ctx.destination);audApplyVol();}}
+    if(AUD.ctx&&AUD.ctx.state==='suspended')AUD.ctx.resume();
   }catch(e){}
   if(!AUD.unlocked){AUD.unlocked=true;audSync();}
   else if(AUD.el&&AUD.el.paused&&!document.hidden){const p=AUD.el.play();if(p&&p.catch)p.catch(()=>{});}
@@ -2553,7 +2553,7 @@ function audMusicVol(){return Math.max(0,Math.min(1,(+SET.music||0)/100))*AUD.du
 function audLvl(a){const v=Math.max(0,Math.min(1,(a._g||0)*audMusicVol()));if(a._gn)a._gn.gain.value=v;else a.volume=v;}
 function audApplyVol(){if(AUD.sfxOut)AUD.sfxOut.gain.value=Math.max(0,Math.min(1,(+SET.sfx||0)/100));if(AUD.el)audLvl(AUD.el);}
 function audFade(a,to,ms,cb){clearInterval(a._fi);const from=a._g||0,t0=performance.now();a._fi=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/ms);a._g=from+(to-from)*k;audLvl(a);if(k>=1){clearInterval(a._fi);if(cb)cb();}},40);}
-function audWant(){return(!ST&&!NET.on&&(UI.screen||'title')==='title')?'title':'menu';}
+function audWant(){if(!ST)return 'title';if(NET.on&&ST.phase==='lobby')return 'title';return 'menu';}
 function audSync(){
   if(!AUD||!AUD.ready||!AUD.unlocked)return;
   const want=audWant();if(want===AUD.mode)return;
@@ -2565,7 +2565,7 @@ function audNextMenu(){
   return AUD.queue.shift();
 }
 function audStart(kind){
-  const t=kind==='title'?AUD.tracks.title[0]:audNextMenu(),old=AUD.el;AUD.el=null;
+  const t=kind==='title'?(AUD.tracks.title[0]||audNextMenu()):audNextMenu(),old=AUD.el;AUD.el=null;
   if(old)audFade(old,0,700,()=>{old.pause();old.removeAttribute('src');try{old.load();}catch(e){}});
   AUD.cur=t||null;audShowSong();
   if(!t)return;
@@ -2581,11 +2581,7 @@ function audStart(kind){
 function audSkip(){if(AUD.mode==='menu'&&AUD.tracks.menu.length)audStart('menu');}
 function audShowSong(){const n=document.getElementById('t-song');if(n)n.textContent=AUD.cur&&AUD.mode==='title'?'🎵 '+AUD.cur.title+' – '+AUD.cur.artist:'';}
 function setVol(k,v){SET[k]=+v;const e=document.getElementById('vol-'+k);if(e)e.textContent=v+'%';audApplyVol();saveSettings();}
-function titleTap(){
-  audUnlock();
-  if(AUD.ready&&AUD.tracks.title.length&&!AUD.titleHeard){AUD.titleHeard=true;audShowSong();return;}
-  screen('menu');
-}
+function titleTap(){audUnlock();screen('menu');}
 
 /* ── Soundeffekte (eingebaut, per sfx_*.mp3 ersetzbar) ── */
 function sTone(f,d,type,vol,when,f2){const c=AUD.ctx,t=c.currentTime+(when||0),o=c.createOscillator(),g=c.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(AUD.sfxOut);o.start(t);o.stop(t+d+0.05);}
@@ -2612,16 +2608,20 @@ function sfx(k){
   if(AUD.sfxFiles[k]){sfxFile(k).then(b=>{if(b){const s=AUD.ctx.createBufferSource();s.buffer=b;s.connect(AUD.sfxOut);s.start();}else if(b===false&&SFX_SYN[k])SFX_SYN[k]();});return;}
   if(SFX_SYN[k]){try{SFX_SYN[k]();}catch(e){}}
 }
-document.addEventListener('pointerdown',e=>{
-  audUnlock();
-  const t=e.target.closest&&e.target.closest('button,.mbtn,.item.tap,.cw,.tab,.segb,.teamb,.drum,[onclick],[data-act]');
-  if(t&&!t.disabled&&!t.closest('.title-scr'))sfx('click');
-},true);
+document.addEventListener('pointerdown',()=>audUnlock(),true);
+function sfxLoop(k){
+  if(!AUD||!AUD.ctx||!(+SET.sfx>0))return()=>{};
+  let src=null,g=null,stopped=false;const tm=[];
+  if(AUD.sfxFiles[k]){sfxFile(k).then(b=>{if(stopped||!b)return;src=AUD.ctx.createBufferSource();src.buffer=b;src.loop=true;g=AUD.ctx.createGain();g.gain.value=1;src.connect(g);g.connect(AUD.sfxOut);src.start();});}
+  else if(k==='lottery'){const tick=()=>{if(stopped)return;try{for(let i=0;i<3;i++)sNoise(0.018,0.12+Math.random()*0.12,Math.random()*0.1,2800);}catch(e){}tm.push(setTimeout(tick,110));};tick();}
+  return()=>{if(stopped)return;stopped=true;tm.forEach(clearTimeout);if(src){try{const t=AUD.ctx.currentTime;g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0.0001,t+0.25);src.stop(t+0.3);}catch(e){try{src.stop();}catch(e2){}}}};
+}
+function lotStop(){if(UI.lotStop){UI.lotStop();UI.lotStop=null;}}
 document.addEventListener('visibilitychange',()=>{if(!AUD.el)return;if(document.hidden)AUD.el.pause();else if(AUD.unlocked){const p=AUD.el.play();if(p&&p.catch)p.catch(()=>{});}});
 (function(){const ar=document.getElementById('arena');if(!ar||!window.MutationObserver)return;new MutationObserver(()=>{const d=ar.classList.contains('hidden')?1:0.45;if(d!==AUD.duck){AUD.duck=d;audApplyVol();}}).observe(ar,{attributes:true,attributeFilter:['class']});})();
 function audSettingsHTML(){
-  const all=AUD.tracks.title.map(t=>({t:t,k:'Startbildschirm'})).concat(AUD.tracks.menu.map(t=>({t:t,k:'Menü & Spiel'})));
-  const credits=all.length?all.map(x=>`<div class="item"><div style="font-size:20px">🎵</div><div class="grow"><div class="b s">${esc(x.t.title)}</div><div class="s mut">${esc(x.t.artist)}</div></div><span class="chip">${x.k}</span></div>`).join(''):`<div class="s mut" style="line-height:1.6">Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):<br><b>ladescreen_Künstler_Songtitel.mp3</b> für den Startbildschirm<br><b>menu_Künstler_Songtitel.mp3</b> für wechselnde Songs ab dem Hauptmenü</div>`;
+  const all=AUD.tracks.title.map(t=>({t:t,k:'Start & Menü'})).concat(AUD.tracks.menu.map(t=>({t:t,k:'Im Spiel'})));
+  const credits=all.length?all.map(x=>`<div class="item"><div style="font-size:20px">🎵</div><div class="grow"><div class="b s">${esc(x.t.title)}</div><div class="s mut">${esc(x.t.artist)}</div></div><span class="chip">${x.k}</span></div>`).join(''):`<div class="s mut" style="line-height:1.6">Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):<br><b>ladescreen_Künstler_Songtitel.mp3</b> für Startbildschirm und Menüs<br><b>menu_Künstler_Songtitel.mp3</b> für wechselnde Songs im Spiel</div>`;
   return `<div class="panel"><div class="lbl">Ton</div>
 <div class="row between"><span class="s b">🎵 Musik</span><span class="s mut" id="vol-music">${SET.music}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.music}" oninput="setVol('music',this.value)">
 <div class="row between"><span class="s b">🔊 Effekte & Klicks</span><span class="s mut" id="vol-sfx">${SET.sfx}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.sfx}" oninput="setVol('sfx',this.value)" onchange="sfx('point')">

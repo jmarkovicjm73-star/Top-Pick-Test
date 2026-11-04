@@ -140,6 +140,7 @@ body.mm .hl{font-size:9px;margin:0}
 body.mm .cs .lab{display:none}
 body.mm .cs .cw{position:relative}
 body.mm .stb{display:flex;position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#06121d;border:2px solid #0a1429;z-index:2}
+.drum-t{font-size:22px;font-weight:900;letter-spacing:.1em;color:#fde68a;text-shadow:0 0 14px rgba(253,230,138,.35)}
 .stb.w{background:var(--ok)}.stb.l{background:var(--bad)}
 
 .hl{text-align:center;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);position:relative;z-index:1;margin:2px 0}
@@ -372,9 +373,12 @@ const FIREBASE_CONFIG={
 };
 /* 3) MUSIK & SOUNDS: Lege MP3-Dateien ins Repository (neben die index.html oder in einen Ordner "musik"):
       ladescreen_Künstler_Songtitel.mp3  → läuft auf dem Startbildschirm und in allen Menüs
-      menu_Künstler_Songtitel.mp3        → wechselnde Songs, sobald ein Spiel läuft (beliebig viele)
+      menu_Künstler_Songtitel.mp3        → wechselnde Songs in den Spielphasen: Spieltag, Draft, Trades, Offseason
+      game_Künstler_Songtitel.mp3        → wechselnde Songs während der Duelle (beliebig viele)
       Künstler und Titel werden aus dem Dateinamen gelesen und unter Einstellungen → Credits angezeigt.
-      Optional eigene Effekte: sfx_wuerfel, sfx_lotterie (Trommel, läuft in Schleife), sfx_karte, sfx_punkt, sfx_fehlwurf,
+      Duell-Sounds: sfx_angriff_treffer (mein Angriff, Punkt für mich), sfx_angriff_fehlwurf (mein Angriff, Punkt für Gegner),
+      sfx_abwehr_kassiert (sein Angriff, Punkt für Gegner), sfx_abwehr_stopp (sein Angriff, Punkt für mich).
+      Weitere eigene Effekte: sfx_wuerfel, sfx_lotterie (Trommel, läuft in Schleife), sfx_karte, sfx_punkt, sfx_fehlwurf,
       sfx_muenze, sfx_kugel, sfx_sieg, sfx_niederlage, sfx_sirene (.mp3) ersetzen die eingebauten Töne.
       Auf GitHub Pages werden die Dateien automatisch gefunden. Auf anderen Webseiten trage sie hier ein,
       z. B. const MUSIC_FILES=['ladescreen_Max Muster_Intro.mp3','menu_Max Muster_Song 1.mp3']; */
@@ -957,7 +961,7 @@ function vDraft(){
   const board=d.picks.map((p,k)=>`<div class="item"><div class="b" style="width:24px">#${k+1}</div>${badge(p.gi)}<div class="grow"><div class="b">${p.id?esc(DB[p.id].name):'— ausgesetzt'}</div><div class="s mut">${gname(p.gi)}${p.id?' · '+POS_NAME[DB[p.id].pos]+' · '+DB[p.id].sal+' Mio':''}</div></div>${p.id?`<div class="b" style="color:${TIER_COL.Rookie}">${rating(null,p.id)}</div>`:''}</div>`).join('');
   let mid='';
   if(!done){
-    if(d.cur<0)mid=`<div class="drum ${UI.spin?'spin':''}" onclick="drawBall()">${UI.spin?'🏀':'🎰'}</div><div class="sub" style="text-align:center">Tippe die Lotterie für Pick ${d.order.length+1}</div>`;
+    if(d.cur<0)mid=`<div class="drum ${UI.spin?'spin':''}" onclick="drawBall()">${UI.spin?'🏀':'<span class="drum-t">START</span>'}</div><div class="sub" style="text-align:center">Tippe die Lotterie für Pick ${d.order.length+1}</div>`;
     else mid=turnBanner(d.cur,d.cur===0?'Wähle deinen Rookie':'hat Pick '+d.order.length+' und wählt …');
   }
   app(`${head}
@@ -1296,7 +1300,7 @@ function duelSheet(){
 function arFinish(){
   const m=UI.m;if(!m||!m.pending||UI.arDone)return;
   UI.arDone=true;arClear();
-  sfx(m.pending.humanAtt===m.pending.attWin?'point':'miss');
+  duelSfx(m.pending.humanAtt,m.pending.attWin);
   const p=m.pending,ar=$('arena'),eA=$('ar-a'),eD=$('ar-d'),av=$('ar-av'),dv=$('ar-dv');
   ar.classList.add('on');
   ar.querySelectorAll('.flip.hid').forEach(f=>f.classList.remove('hid'));
@@ -2144,7 +2148,7 @@ function duelFX(d,done){
 <div class="ar-skip" id="ar-skip">Tippen zum Überspringen</div>`;
   ar.classList.remove('hidden');
   const fin=()=>{
-    if(UI.arDone)return;UI.arDone=true;arClear();ar.classList.add('on');sfx(mine?'point':'miss');
+    if(UI.arDone)return;UI.arDone=true;arClear();ar.classList.add('on');duelSfx(d.as===ms,attWin);
     ar.querySelectorAll('.flip.hid').forEach(f=>f.classList.remove('hid'));
     ['ar-vs','ar-stat','ar-res','ar-btn'].forEach(id=>{const e=$(id);if(e)e.classList.add('on');});
     const eA=$('ar-a'),eD=$('ar-d'),av=$('ar-av'),dv=$('ar-dv');if(!eA||!eD)return;
@@ -2489,7 +2493,7 @@ function oDraft(){
   const board=d.picks.map((p,k)=>`<div class="item"><div class="b" style="width:24px">#${k+1}</div>${badge(p.gi)}<div class="grow"><div class="b">${p.id?esc(DB[p.id].name):'— ausgesetzt'}</div><div class="s mut">${gname(p.gi)}${p.id?' · '+POS_NAME[DB[p.id].pos]+' · '+DB[p.id].sal+' Mio':''}</div></div>${p.id?`<div class="b" style="color:${TIER_COL.Rookie}">${rating(null,p.id)}</div>`:''}</div>`).join('');
   let mid='';
   if(!done){
-    if(d.cur<0)mid=rem.every(isBot)?'<div class="sub mt" style="text-align:center">Die Lotterie zieht die nächste Kugel …</div>':`<div class="drum" onclick="act('draw')">🎰</div><div class="sub" style="text-align:center">Tippe die Trommel für Pick ${d.order.length+1} – jeder darf drehen</div>`;
+    if(d.cur<0)mid=rem.every(isBot)?'<div class="sub mt" style="text-align:center">Die Lotterie zieht die nächste Kugel …</div>':`<div class="drum" onclick="act('draw')"><span class="drum-t">START</span></div><div class="sub" style="text-align:center">Tippe die Trommel für Pick ${d.order.length+1} – jeder darf drehen</div>`;
     else mid=turnBanner(d.cur,d.cur===me?'Wähle deinen Rookie':'hat Pick '+d.order.length+' und wählt …');
   }
   app(`${head}<div class="panel"><div class="lbl">Kugeln in der Lotterie <span>${d.balls.length}</span></div><div class="row wrap">${d.balls.map(x=>{const t=TEAMS[G_(x).team];return `<div class="ball ${d.order.indexOf(x)>-1?'out':''}" style="background:${t.col};color:${t.tx}">${t.sh}</div>`;}).join('')||'<div class="s mut">Keine Teilnehmer</div>'}</div></div>
@@ -2537,18 +2541,18 @@ function renderOnline(){
 }
 
 /* ═════════════ AUDIO: Musik & Soundeffekte ═════════════ */
-var AUD={ctx:null,sfxOut:null,unlocked:false,ready:false,tracks:{title:[],menu:[]},sfxFiles:{},buf:{},el:null,mode:null,cur:null,queue:[],duck:1,titleHeard:false};
+var AUD={ctx:null,sfxOut:null,unlocked:false,ready:false,tracks:{title:[],menu:[],game:[]},q:{},sfxFiles:{},buf:{},el:null,mode:null,cur:null,queue:[],duck:1,titleHeard:false};
 if(SET.music==null)SET.music=60;if(SET.sfx==null)SET.sfx=70;
-const SFX_FILE={lotterie:'lottery',klick:'click',wuerfel:'dice',karte:'flip',punkt:'point',fehlwurf:'miss',muenze:'coin',kugel:'ball',sieg:'win',niederlage:'lose',sirene:'buzzer'};
+const SFX_FILE={angriff_treffer:'atk_win',angriff_fehlwurf:'atk_lose',abwehr_kassiert:'def_lose',abwehr_stopp:'def_win',lotterie:'lottery',klick:'click',wuerfel:'dice',karte:'flip',punkt:'point',fehlwurf:'miss',muenze:'coin',kugel:'ball',sieg:'win',niederlage:'lose',sirene:'buzzer'};
 function trackInfo(path){
-  const f=path.split('/').pop(),base=f.replace(/\.(mp3|m4a|ogg|wav|aac)$/i,''),m=base.match(/^(ladescreen|menu)_(.+)$/i);if(!m)return null;
+  const f=path.split('/').pop(),base=f.replace(/\.(mp3|m4a|ogg|wav|aac)$/i,''),m=base.match(/^(ladescreen|menu|game)_(.+)$/i);if(!m)return null;
   const parts=m[2].split('_').map(x=>x.trim()).filter(Boolean);
-  return{kind:m[1].toLowerCase()==='ladescreen'?'title':'menu',src:path.split('/').map(encodeURIComponent).join('/'),file:f,artist:parts.length>1?parts[0]:'Unbekannt',title:parts.length>1?parts.slice(1).join(' '):(parts[0]||'Unbekannt')};
+  return{kind:{ladescreen:'title',menu:'menu',game:'game'}[m[1].toLowerCase()],src:path.split('/').map(encodeURIComponent).join('/'),file:f,artist:parts.length>1?parts[0]:'Unbekannt',title:parts.length>1?parts.slice(1).join(' '):(parts[0]||'Unbekannt')};
 }
 function audAddFiles(paths){
   (paths||[]).forEach(p=>{
     if(typeof p!=='string'||!/\.(mp3|m4a|ogg|wav|aac)$/i.test(p))return;
-    const f=p.split('/').pop(),s=f.match(/^sfx_([a-z]+)\./i);
+    const f=p.split('/').pop(),s=f.match(/^sfx_([a-z_]+)\./i);
     if(s){const k=SFX_FILE[s[1].toLowerCase()]||s[1].toLowerCase();AUD.sfxFiles[k]=p.split('/').map(encodeURIComponent).join('/');return;}
     const t=trackInfo(p);if(t&&!AUD.tracks[t.kind].some(x=>x.src===t.src))AUD.tracks[t.kind].push(t);
   });
@@ -2580,32 +2584,39 @@ function audMusicVol(){return Math.max(0,Math.min(1,(+SET.music||0)/100))*AUD.du
 function audLvl(a){const v=Math.max(0,Math.min(1,(a._g||0)*audMusicVol()));if(a._gn)a._gn.gain.value=v;else a.volume=v;}
 function audApplyVol(){if(AUD.sfxOut)AUD.sfxOut.gain.value=Math.max(0,Math.min(1,(+SET.sfx||0)/100));if(AUD.el)audLvl(AUD.el);}
 function audFade(a,to,ms,cb){clearInterval(a._fi);const from=a._g||0,t0=performance.now();a._fi=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/ms);a._g=from+(to-from)*k;audLvl(a);if(k>=1){clearInterval(a._fi);if(cb)cb();}},40);}
-function audWant(){if(!ST)return 'title';if(NET.on&&ST.phase==='lobby')return 'title';return 'menu';}
+function inMatchNow(){if(!ST)return false;if(!NET.on)return ST.phase==='match';if(ST.phase!=='hub')return false;const k=myGame();if(k<0)return false;const G=curMd().games[k];return !!G&&G.st==='live';}
+function audWant(){if(!ST)return 'title';if(NET.on&&ST.phase==='lobby')return 'title';return inMatchNow()?'game':'menu';}
 function audSync(){
   if(!AUD||!AUD.ready||!AUD.unlocked)return;
   const want=audWant();if(want===AUD.mode)return;
   AUD.mode=want;audStart(want);
 }
-function audNextMenu(){
-  const L=AUD.tracks.menu;if(!L.length)return null;
-  if(!AUD.queue.length){AUD.queue=shuffle(L.slice());if(AUD.cur&&AUD.queue.length>1&&AUD.queue[0]===AUD.cur)AUD.queue.push(AUD.queue.shift());}
-  return AUD.queue.shift();
+function audNext(kind){
+  const L=AUD.tracks[kind]||[];if(!L.length)return null;AUD.q=AUD.q||{};
+  if(!AUD.q[kind]||!AUD.q[kind].length){AUD.q[kind]=shuffle(L.slice());if(AUD.cur&&AUD.q[kind].length>1&&AUD.q[kind][0]===AUD.cur)AUD.q[kind].push(AUD.q[kind].shift());}
+  return AUD.q[kind].shift();
+}
+function audPick(kind){
+  if(kind==='title')return AUD.tracks.title[0]?{t:AUD.tracks.title[0],k:'title'}:(audPick('menu'));
+  const order=kind==='game'?['game','menu','title']:['menu','game','title'];
+  for(const k of order){if(k==='title'){if(AUD.tracks.title[0])return{t:AUD.tracks.title[0],k:'title'};continue;}const t=audNext(k);if(t)return{t:t,k:k};}
+  return null;
 }
 function audStart(kind){
-  const t=kind==='title'?(AUD.tracks.title[0]||audNextMenu()):audNextMenu(),old=AUD.el;AUD.el=null;
+  const pk=audPick(kind),t=pk&&pk.t,src=pk?pk.k:kind,old=AUD.el;AUD.el=null;
   if(old)audFade(old,0,700,()=>{old.pause();old.removeAttribute('src');try{old.load();}catch(e){}});
   AUD.cur=t||null;audShowSong();
   if(!t)return;
-  const a=new Audio(t.src);a.preload='auto';a.loop=kind==='title'||AUD.tracks.menu.length<2;a._g=0;
+  const a=new Audio(t.src);a.preload='auto';a.loop=src==='title'||(AUD.tracks[src]||[]).length<2;a._g=0;
   if(AUD.ctx){try{const s=AUD.ctx.createMediaElementSource(a),g=AUD.ctx.createGain();g.gain.value=0;s.connect(g);g.connect(AUD.ctx.destination);a._gn=g;}catch(e){}}
   audLvl(a);
-  a.addEventListener('ended',()=>{if(AUD.el===a&&AUD.mode==='menu')audStart('menu');});
-  a.addEventListener('error',()=>{if(AUD.el===a&&AUD.mode==='menu'&&AUD.tracks.menu.length>1)setTimeout(()=>{if(AUD.el===a)audStart('menu');},800);});
+  a.addEventListener('ended',()=>{if(AUD.el===a&&AUD.mode===kind)audStart(kind);});
+  a.addEventListener('error',()=>{if(AUD.el===a&&AUD.mode===kind&&src!=='title'&&(AUD.tracks[src]||[]).length>1)setTimeout(()=>{if(AUD.el===a)audStart(kind);},800);});
   AUD.el=a;const p=a.play();if(p&&p.catch)p.catch(()=>{});
   audFade(a,1,900);
   if(UI.screen==='settings'&&!ST)render();
 }
-function audSkip(){if(AUD.mode==='menu'&&AUD.tracks.menu.length)audStart('menu');}
+function audSkip(){if(AUD.mode&&AUD.mode!=='title')audStart(AUD.mode);}
 function audShowSong(){const n=document.getElementById('t-song');if(n)n.textContent=AUD.cur&&AUD.mode==='title'?'🎵 '+AUD.cur.title+' – '+AUD.cur.artist:'';}
 function setVol(k,v){SET[k]=+v;const e=document.getElementById('vol-'+k);if(e)e.textContent=v+'%';audApplyVol();saveSettings();}
 function titleTap(){audUnlock();screen('menu');}
@@ -2643,16 +2654,17 @@ function sfxLoop(k){
   else if(k==='lottery'){const tick=()=>{if(stopped)return;try{for(let i=0;i<3;i++)sNoise(0.018,0.12+Math.random()*0.12,Math.random()*0.1,2800);}catch(e){}tm.push(setTimeout(tick,110));};tick();}
   return()=>{if(stopped)return;stopped=true;tm.forEach(clearTimeout);if(src){try{const t=AUD.ctx.currentTime;g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0.0001,t+0.25);src.stop(t+0.3);}catch(e){try{src.stop();}catch(e2){}}}};
 }
+function duelSfx(myAtt,attWin){const k=myAtt?(attWin?'atk_win':'atk_lose'):(attWin?'def_lose':'def_win');sfx(AUD&&AUD.sfxFiles[k]?k:(myAtt===attWin?'point':'miss'));}
 function lotStop(){if(UI.lotStop){UI.lotStop();UI.lotStop=null;}}
 document.addEventListener('visibilitychange',()=>{if(!AUD.el)return;if(document.hidden)AUD.el.pause();else if(AUD.unlocked){const p=AUD.el.play();if(p&&p.catch)p.catch(()=>{});}});
 (function(){const ar=document.getElementById('arena');if(!ar||!window.MutationObserver)return;new MutationObserver(()=>{const d=ar.classList.contains('hidden')?1:0.45;if(d!==AUD.duck){AUD.duck=d;audApplyVol();}}).observe(ar,{attributes:true,attributeFilter:['class']});})();
 function audSettingsHTML(){
-  const all=AUD.tracks.title.map(t=>({t:t,k:'Start & Menü'})).concat(AUD.tracks.menu.map(t=>({t:t,k:'Im Spiel'})));
-  const credits=all.length?all.map(x=>`<div class="item"><div style="font-size:20px">🎵</div><div class="grow"><div class="b s">${esc(x.t.title)}</div><div class="s mut">${esc(x.t.artist)}</div></div><span class="chip">${x.k}</span></div>`).join(''):`<div class="s mut" style="line-height:1.6">Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):<br><b>ladescreen_Künstler_Songtitel.mp3</b> für Startbildschirm und Menüs<br><b>menu_Künstler_Songtitel.mp3</b> für wechselnde Songs im Spiel</div>`;
+  const all=AUD.tracks.title.map(t=>({t:t,k:'Start & Hauptmenü'})).concat(AUD.tracks.menu.map(t=>({t:t,k:'Spielphasen'})),AUD.tracks.game.map(t=>({t:t,k:'Im Duell'})));
+  const credits=all.length?all.map(x=>`<div class="item"><div style="font-size:20px">🎵</div><div class="grow"><div class="b s">${esc(x.t.title)}</div><div class="s mut">${esc(x.t.artist)}</div></div><span class="chip">${x.k}</span></div>`).join(''):`<div class="s mut" style="line-height:1.6">Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):<br><b>ladescreen_Künstler_Songtitel.mp3</b> für Startbildschirm und Hauptmenü<br><b>menu_Künstler_Songtitel.mp3</b> für Spieltag, Draft, Trades und Offseason<br><b>game_Künstler_Songtitel.mp3</b> während der Duelle</div>`;
   return `<div class="panel"><div class="lbl">Ton</div>
 <div class="row between"><span class="s b">🎵 Musik</span><span class="s mut" id="vol-music">${SET.music}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.music}" oninput="setVol('music',this.value)">
 <div class="row between"><span class="s b">🔊 Effekte & Klicks</span><span class="s mut" id="vol-sfx">${SET.sfx}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.sfx}" oninput="setVol('sfx',this.value)" onchange="sfx('point')">
-${AUD.cur?`<div class="item mt"><div style="font-size:20px">▶️</div><div class="grow"><div class="s mut">Läuft gerade</div><div class="b s">${esc(AUD.cur.title)} – ${esc(AUD.cur.artist)}</div></div>${AUD.mode==='menu'&&AUD.tracks.menu.length>1?'<button class="btn sec sm" onclick="audSkip()">⏭ Nächster</button>':''}</div>`:''}</div>
+${AUD.cur?`<div class="item mt"><div style="font-size:20px">▶️</div><div class="grow"><div class="s mut">Läuft gerade</div><div class="b s">${esc(AUD.cur.title)} – ${esc(AUD.cur.artist)}</div></div>${AUD.mode&&AUD.mode!=='title'?'<button class="btn sec sm" onclick="audSkip()">⏭ Nächster</button>':''}</div>`:''}</div>
 <div class="panel"><div class="lbl">Credits · Musik</div><div class="col">${credits}</div></div>`;
 }
 audDiscover();

@@ -129,6 +129,7 @@ button.chip{cursor:pointer;padding:7px 11px}
 :root{--cw-lu:var(--cw)}
 @supports (height:100lvh){:root{--cw-lu:clamp(64px,min(calc((100vw - 44px) / 3),calc((100lvh - 260px) / 5.6)),120px)}}
 .court:not(.full) .cs{width:var(--cw-lu)}
+body.mm .court.full .cs{width:var(--cwm,var(--cw))}
 .hcap{display:none}.stb{display:none}
 html:has(body.mm),body.mm{overflow:hidden;overscroll-behavior:none}
 body.mm #app{padding-bottom:0}
@@ -600,7 +601,7 @@ function openSheet(html,h){UI.sh=h||{};const s=$('sheet');s.innerHTML=`<div clas
 function closeSheet(){const s=$('sheet');s.classList.add('hidden');s.innerHTML='';UI.sh={};}
 function cardSheet(id,gi,o){
   o=o||{};const g=(gi===null||gi===undefined)?null:G_(gi),c=DB[id],tc=TIER_COL[c.tier],h={x:closeSheet};
-  const tiles=['sh','dr','pd','rp'].map(k=>{
+  const tiles=['sh','pd','dr','rp'].map(k=>{
     const base=DB[id][k],v=sv(g,id,k),d=v-base,col=STAT_COL[k],act=o.attack&&(k==='sh'||k==='dr');
     if(act)h['atk-'+k]=()=>o.onAttack(k);
     return `<div class="tile ${act?'act':''}" ${act?`data-act="atk-${k}" style="border-color:${col};background:${col}14"`:''}>
@@ -689,7 +690,17 @@ function applyTheme(){
   b.style.setProperty('--tm',t.tm);b.style.setProperty('--tc',t.rgb);b.style.setProperty('--tl',t.tl);b.style.setProperty('--tt',t.tx);b.classList.add('tm');
   const mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.setAttribute('content','#0a0f1e');
 }
-function render(){audSync();applyTheme();const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
+function fitCourt(){
+  const b=document.body;if(!b.classList.contains('mm')){b.style.removeProperty('--cwm');return;}
+  const court=document.querySelector('.court.full'),cs=court&&court.querySelector('.cs');if(!court||!cs)return;
+  const hint=document.querySelector('.hint'),hH=hint?hint.getBoundingClientRect().height:60,w0=cs.getBoundingClientRect().width,rC=court.getBoundingClientRect();
+  if(!w0||!rC.height)return;
+  const other=rC.height-4*w0*1.4,avail=window.innerHeight-hH-10-rC.top;
+  const w=Math.max(60,Math.min((avail-other)/5.6,(rC.width-26)/3,150));
+  if(Math.abs(w-w0)>1){b.style.setProperty('--cwm',w.toFixed(1)+'px');requestAnimationFrame(fitCourt);}
+}
+window.addEventListener('resize',()=>requestAnimationFrame(fitCourt));
+function render(){audSync();applyTheme();setTimeout(()=>requestAnimationFrame(fitCourt),0);const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
 function seasonLabel(){
   const p=ST.phase;if(ST.mode==='up')return 'Ultimate Pick · Stufe '+ST.up.stage;
   if(p==='dice'||p==='captain'||p==='pre_done')return 'Preseason';

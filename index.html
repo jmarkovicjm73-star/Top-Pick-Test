@@ -536,7 +536,7 @@ let botT=null;
 function later(fn,ms){clearTimeout(botT);botT=setTimeout(fn,ms);}
 
 function G_(i){return ST.gms[i];}
-function capOf(g){return CFG.CAP+(g.ringHolder?CFG.RING_BONUS:0);}
+function capOf(g){return CFG.CAP+(g.ringHolder?CFG.RING_BONUS:0)+(g.capX||0);}
 function lineupCost(ids){return ids.reduce((s,id)=>s+DB[id].sal,0);}
 function lvl(g,id){return g&&g.up[id]?g.up[id].n:0;}
 function sv(g,id,k){let v=DB[id][k];if(g){v+=lvl(g,id)*CFG.UP_STEP;g.buffs.forEach(b=>{if(b.id===id&&b.k===k)v+=b.v;});}return Math.min(99,v);}
@@ -626,6 +626,7 @@ function menuSheet(){
 <button class="btn sec" data-act="k">📋 Mein Kader</button><button class="btn sec" data-act="r">📖 Spielregeln</button>
 <button class="btn sec" data-act="m">🏠 Zum Hauptmenü</button><button class="btn bad" data-act="q">${NET.host?'Spiel für alle beenden':'Spiel verlassen'}</button><button class="btn sec" data-act="x">Schließen</button></div>
 <div class="s mut mt" style="text-align:center;line-height:1.5">${NET.host?'Zum Hauptmenü: Das Spiel pausiert für alle, bis du es im Hauptmenü fortsetzt.':'Zum Hauptmenü: Dein Platz bleibt reserviert, im Hauptmenü kommst du zurück.'}</div>`,{k:rosterSheet,r:rulesSheet,m:()=>{closeSheet();leaveOnline();},q:quitSheet,x:closeSheet});return;}
+  if(ST&&ST.mode==='up'){openSheet(`<div class="h2" style="margin-bottom:12px">Ultimate Pick</div><div class="col"><button class="btn sec" data-act="k">📋 Mein Kader</button><button class="btn sec" data-act="r">📖 So geht's</button><button class="btn sec" data-act="m">🏠 Zum Hauptmenü</button><button class="btn bad" data-act="g">Run aufgeben</button><button class="btn sec" data-act="x">Schließen</button></div><div class="s mut mt" style="text-align:center">Zum Hauptmenü: Der Run wird gespeichert und läuft später weiter.</div>`,{k:rosterSheet,r:upRulesSheet,m:()=>{closeSheet();toMenuOffline();},g:upGiveUpAsk,x:closeSheet});return;}
   const inSeason=ST.sched&&ST.sched.length>0;
   openSheet(`<div class="h2" style="margin-bottom:12px">Menü</div><div class="col">
 <button class="btn sec" data-act="k">📋 Mein Kader</button>
@@ -661,7 +662,7 @@ function hasStore(){return !!LS||hasWS();}
 async function kvGet(k){if(LS){try{return LS.getItem(k);}catch(e){return null;}}if(!hasWS())return null;try{const r=await window.storage.get(k,false);return r&&r.value!=null?r.value:null;}catch(e){return null;}}
 function kvSet(k,v){if(LS){try{LS.setItem(k,v);}catch(e){}return;}if(!hasWS())return;try{const p=window.storage.set(k,v,false);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
 function kvDel(k){if(LS){try{LS.removeItem(k);}catch(e){}return;}if(!hasWS())return;try{const p=window.storage.delete(k,false);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
-function save(){if(!ST||NET.on||ST.phase==='match'||!hasStore())return;if(!UI.slot){if(SLOTS.length>=SLOT_MAX)return;UI.slot=newSlotId();SLOTS.unshift(slotMeta(UI.slot,ST));slotsSave();}const id=UI.slot,snap=JSON.stringify(ST);clearTimeout(saveT);saveT=setTimeout(()=>{kvSet(slotKey(id),snap);slotTouch(id,JSON.parse(snap));},700);}
+function save(){if(ST&&ST.mode==='up'){if(ST.phase!=='match')upSave();return;}if(!ST||NET.on||ST.phase==='match'||!hasStore())return;if(!UI.slot){if(SLOTS.length>=SLOT_MAX)return;UI.slot=newSlotId();SLOTS.unshift(slotMeta(UI.slot,ST));slotsSave();}const id=UI.slot,snap=JSON.stringify(ST);clearTimeout(saveT);saveT=setTimeout(()=>{kvSet(slotKey(id),snap);slotTouch(id,JSON.parse(snap));},700);}
 async function loadSave(){const v=await kvGet(SAVE_KEY);if(!v)return null;try{return JSON.parse(v);}catch(e){return null;}}
 function wipeSave(){kvDel(SAVE_KEY);}
 function resume(){const s=UI.saved;if(!s)return;ST=s;UI.saved=null;go(ST.phase==='match'?'hub':ST.phase);}
@@ -691,7 +692,7 @@ function applyTheme(){
 }
 function render(){audSync();applyTheme();const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
 function seasonLabel(){
-  const p=ST.phase;
+  const p=ST.phase;if(ST.mode==='up')return 'Ultimate Pick · Stufe '+ST.up.stage;
   if(p==='dice'||p==='captain'||p==='pre_done')return 'Preseason';
   if(p==='fa')return ST.fa&&ST.fa.mode==='season'?'Offseason':'Preseason';
   if(p==='draft')return ST.dr&&ST.dr.mode==='season'?'Offseason':'Preseason';
@@ -707,7 +708,7 @@ function renderHeader(){
   if(!ST||k<0||ST.phase==='lobby'){h.style.display='none';h.innerHTML='';return;}
   const me=G_(k),t=TEAMS[me.team];h.style.display='block';
   h.innerHTML=`<div class="in"><div class="htop">${badge(k)}<div class="grow"><div class="tn">${esc(t.name)}</div><div class="ts">${esc(me.name)} · ${seasonLabel()}</div></div><span class="chip hcap">💰 Cap ${capOf(me)}</span><button class="ib" onclick="menuSheet()">☰</button></div>
-<div class="hst">${NET.on?`<span class="chip ${UI.pending?'bad':'acc'}">${UI.pending?'⏳ wird übertragen':(NET.host?'🌐 Host':'🌐 Online')} · ${esc(NET.code)}</span>`:''}<span class="chip">💍 ${me.rings}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">💰 Cap ${capOf(me)}</span><span class="chip">🎟 ${me.trade}</span><span class="chip">🎱 ${me.picks}</span>${me.ringHolder?'<span class="chip ok">Ringträger</span>':''}</div></div>`;
+<div class="hst">${NET.on?`<span class="chip ${UI.pending?'bad':'acc'}">${UI.pending?'⏳ wird übertragen':(NET.host?'🌐 Host':'🌐 Online')} · ${esc(NET.code)}</span>`:''}${ST.mode==='up'?`<span class="chip acc">⚡ Stufe ${ST.up.stage}</span><span class="chip">🏆 ${fmtPts(ST.up.score)}</span><span class="chip">✅ ${ST.up.wins}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">🎟 ${me.trade}</span>`:`<span class="chip">💍 ${me.rings}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">💰 Cap ${capOf(me)}</span><span class="chip">🎟 ${me.trade}</span><span class="chip">🎱 ${me.picks}</span>${me.ringHolder?'<span class="chip ok">Ringträger</span>':''}`}</div></div>`;
 }
 
 /* ═════════════ START ═════════════ */
@@ -721,8 +722,8 @@ function vMenu(){
   app(`<div class="menu-head">${logoHTML()}<div class="t-name">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div></div>
 ${sl?b('▶️','#34d399','Fortsetzen',`${esc(sl.name)} · Saison ${sl.season} · 💍 ${sl.rings}`,`loadSlot('${sl.id}')`,'main'):''}
 ${rm?b('🌐','#7dd3fc',(rm.role==='host'?'Raum ':'Raum ')+esc(rm.code)+(rm.role==='host'?' fortsetzen':' wieder beitreten'),rm.role==='host'?'Als Host weiterspielen':'Als '+esc(rm.name||'Gast')+' weiterspielen',`roomGo('${rm.code}')`,'main'):''}
-${b('🏀','#f7a81b','Offline spielen','Gegen KI-Manager · 2–6 Teams',"screen('start')",sl||rm?'':'main')}
-${b('👥','#a78bfa','Online mit Freunden','Jeder spielt auf seinem eigenen Gerät',"screen('online')")}
+${b('🏀','#f7a81b','GM Career','Mehrere Saisons · offline oder online',"careerSheet()",sl||rm||UI.upRun?'':'main')}
+${b('⚡','#f7a81b','Ultimate Pick',UI.upRun?`Run läuft · Stufe ${UI.upRun.up.stage} · ${fmtPts(UI.upRun.up.score)} Punkte`:`Rogue-Modus · Rekord ${UP_HIST.length?fmtPts(UP_HIST[0].score):'–'}`,"screen('up')",UI.upRun?'main':'')}
 ${b('💾','#fbbf24','Spielstände',`${SLOTS.length} offline · ${ROOMS.length} online`,"screen('saves')")}
 ${b('📚','#60a5fa','Kartenalbum','Alle Karten mit Werten und Skills',"screen('album')")}
 ${b('📖','#94a3b8','Spielregeln','Kurzfassung des Regelwerks','rulesSheet()')}
@@ -747,7 +748,7 @@ function vAlbum(){
 <div class="row wrap mt"><span class="chip">${ids.length} Karten</span>${['G','F','C'].map(p=>`<span class="chip">${p} ${cnt(ids,p)}</span>`).join('')}</div>
 <div class="grid4 mt">${ids.map(id=>`<div class="cw" style="cursor:pointer" onclick="cardSheet('${id}',null)">${cardHTML(id,null)}</div>`).join('')}</div>`);
 }
-const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum,saves:vSaves};
+const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum,saves:vSaves,up:vUp,upboard:vUpBoard};
 function vStart(){(SCREENS[UI.screen||'title']||vSetup)();}
 function vSetup(){
   const s=UI.setup,sv_=UI.saved;
@@ -1221,7 +1222,7 @@ function lineupValid(g,ids){
 function enterLineup(){UI.lu=autoLineup(G_(0));go('lineup');}
 function vLineup(){
   const me=G_(0),md=ST.sched[ST.md],my=md&&md.games.find(x=>x.h===0||x.a===0);
-  if(!my){ST.phase='hub';render();return;}
+  if(!my){ST.phase=ST.mode==='up'?'up_hub':'hub';render();return;}
   if(!UI.lu)UI.lu=autoLineup(me);
   const opp=my.h===0?my.a:my.h,O=G_(opp),sel=UI.lu,ok=lineupValid(me,sel),ar=arrange(sel),cost=lineupCost(sel),cap=capOf(me);
   const slot=(i,p)=>`<div class="cs">${ar[i]?`<div class="cw" onclick="luToggle('${ar[i]}')">${cardHTML(ar[i],me,{mini:1})}</div>`:`<div class="empty">${p}</div>`}<div class="lab mut">${ar[i]?DB[ar[i]].pos:''}</div></div>`;
@@ -1231,7 +1232,7 @@ function vLineup(){
 <div class="court"><div class="crow">${[2,4,3].map(i=>slot(i,['G','G','F','F','C'][i])).join('')}</div><div class="crow">${[0,1].map(i=>slot(i,'G')).join('')}</div></div>
 <div class="row wrap mt">${needChips(sel)}<span class="chip">${sel.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span></div>
 <div class="panel"><div class="lbl">Kader – tippen zum Ein-/Auswechseln</div><div class="col">${sortRoster(me).map(id=>pRow(0,id,{cls:sel.indexOf(id)>-1?'on':(isInj(me,id)?'off':''),click:`luToggle('${id}')`})).join('')}</div></div>
-<div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="UI.lu=autoLineup(G_(0));render()">Auto</button><button class="btn sec" onclick="simFromLineup()">Simulieren</button><button class="btn" ${ok?'':'disabled'} onclick="enterMatch()">Spiel starten</button></div></div>`);
+<div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="UI.lu=autoLineup(G_(0));render()">Auto</button>${ST.mode==='up'?'':'<button class="btn sec" onclick="simFromLineup()">Simulieren</button>'}<button class="btn" ${ok?'':'disabled'} onclick="enterMatch()">Spiel starten</button></div></div>`);
 }
 function luToggle(id){
   const me=G_(Math.max(0,ME())),s=UI.lu,p=DB[id].pos;
@@ -1280,7 +1281,7 @@ function mSlot(side,i){
   return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="tapSlot('${side}',${i})">${side==='op'&&!e.rev?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1})}${e.used?`<div class="stb ${e.won?'w':'l'}">${e.won?'✓':'✗'}</div>`:''}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
 }
 function vMatch(){
-  const m=UI.m;if(!m){ST.phase='hub';render();return;}
+  const m=UI.m;if(!m){ST.phase=ST.mode==='up'?'up_hub':'hub';render();return;}
   const O=G_(m.opp),tm=TEAMS[G_(0).team],to=TEAMS[O.team];
   let hint='';
   if(m.phase==='atk')hint=m.myTurn?(m.first?'Du greifst zuerst an: tippe einen <b>Guard</b> und wähle die Attacke':'Dein Angriff: tippe einen Spieler und wähle die Attacke'):`${esc(O.name)} wählt einen Angreifer …`;
@@ -1436,7 +1437,7 @@ function finishMatch(){
   const m=UI.m;if(!m)return;
   const gm=ST.sched[ST.md].games[m.gi],myL=m.me.map(x=>x.id),opL=m.op.map(x=>x.id);
   if(m.home){gm.hs=m.sMe;gm.as=m.sOp;gm.lh=myL;gm.la=opL;}else{gm.hs=m.sOp;gm.as=m.sMe;gm.lh=opL;gm.la=myL;}
-  UI.m=null;completeMatchday();
+  UI.m=null;if(ST.mode==='up'){upAfterGame(m);return;}completeMatchday();
 }
 function botAttack(){
   const m=UI.m;if(!ST||ST.phase!=='match'||!m||m.myTurn||m.phase!=='atk')return;
@@ -2615,7 +2616,8 @@ async function quitOnline(){
 }
 function toMenuOffline(){
   clearTimeout(botT);clearTimeout(saveT);
-  if(ST){if(!UI.slot&&SLOTS.length<SLOT_MAX){UI.slot=newSlotId();SLOTS.unshift(slotMeta(UI.slot,ST));slotsSave();}if(UI.slot){kvSet(slotKey(UI.slot),JSON.stringify(ST));slotTouch(UI.slot,ST);}}
+  if(ST&&ST.mode==='up'){if(ST.phase==='match'||ST.phase==='lineup')ST.phase='up_hub';upSave();}
+  else if(ST){if(!UI.slot&&SLOTS.length<SLOT_MAX){UI.slot=newSlotId();SLOTS.unshift(slotMeta(UI.slot,ST));slotsSave();}if(UI.slot){kvSet(slotKey(UI.slot),JSON.stringify(ST));slotTouch(UI.slot,ST);}}
   UI.slot=null;
   ST=null;UI.m=null;UI.tr=null;UI.lu=null;arClear();const ar=$('arena');ar.onclick=null;ar.classList.add('hidden');ar.classList.remove('on');ar.innerHTML='';
   UI.shLock=false;closeSheet();UI.screen='menu';window.scrollTo(0,0);render();
@@ -2964,8 +2966,250 @@ function lobbyGoalMode(m){act('lobby_goal',{m:m,n:ST.net.lobby.goalN||3});}
 function lobbyGoalN(d){act('lobby_goal',{m:'custom',n:(ST.net.lobby.goalN||3)+d});}
 H.lobby_goal=(gi,d,pid)=>{if(ST.phase!=='lobby'||!isHostP(pid))return;const L=ST.net.lobby;L.goalMode=['two','custom','free'].indexOf(d.m)>-1?d.m:'two';L.goalN=Math.max(1,Math.min(10,d.n|0||3));};
 
+/* ═════════════ ULTIMATE PICK (Rogue-Modus) ═════════════ */
+const UP_TC={Basic:1,'All-Star':2,Legend:3};
+const UP_PRICE={Basic:1,'All-Star':2,Legend:3};
+UI.up={name:'',team:0,group:''};UI.upRun=null;UI.upTab='g';UI.upLB=null;
+let UP_HIST=[];
+function fmtPts(n){return Number(n||0).toLocaleString('de-DE');}
+function upGM(name,team,bot){return{name:name,team:team,bot:!!bot,roster:[],trade:0,picks:0,rings:0,ringHolder:false,inj:{},buffs:[],up:{},roll:0,w:0,l:0,pf:0,pa:0};}
+async function upLoadMeta(){
+  try{UP_HIST=JSON.parse(await kvGet('tp_up_hist')||'[]');if(!Array.isArray(UP_HIST))UP_HIST=[];}catch(e){UP_HIST=[];}
+  try{const g=await kvGet('tp_up_group');if(g)UI.up.group=g;}catch(e){}
+  try{const n=await kvGet('tp_up_name');if(n)UI.up.name=n;const t=await kvGet('tp_up_team');if(t!=null)UI.up.team=+t||0;}catch(e){}
+  try{const r=await kvGet('tp_up_run');UI.upRun=r?JSON.parse(r):null;}catch(e){UI.upRun=null;}
+}
+function upSave(){if(!ST||ST.mode!=='up'||ST.phase==='up_over')return;const snap=JSON.stringify(ST);kvSet('tp_up_run',snap);UI.upRun=JSON.parse(snap);}
+function upCleanGroup(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);}
+
+/* ── Start & Draft ── */
+function upStart(){
+  const u=UI.up,name=(u.name||'').trim().slice(0,14)||'Du',grp=upCleanGroup(u.group);
+  kvSet('tp_up_name',name);kvSet('tp_up_team',String(u.team|0));kvSet('tp_up_group',grp);
+  ST={v:2,mode:'up',phase:'up_draft',season:1,gms:[upGM(name,u.team|0,false),upGM('Gegner',(u.team+1)%6,true)],order:[0,1],
+    decks:{L:shuffle(IDS('L')),FA:shuffle(IDS('S').concat(IDS('B'))),R:shuffle(IDS('R'))},
+    cap:null,fa:null,dr:null,sched:[],md:0,ev:null,seeds:null,res:null,finalLoser:null,midTrade:false,tr:null,goal:0,
+    up:{stage:1,score:0,wins:0,games:[],group:grp,relLeft:3,offers:[],shop:[],reward:null,lastLu:[],boss:false,scout:[],last:null,id:newSlotId(),at:Date.now()}};
+  UI.slot=null;UI.m=null;UI.lu=null;
+  const cap=ST.decks.L.shift(),g=G_(0);g.roster.push(cap);
+  upOffers();upSave();go('up_draft');
+  if(RM){cardSheet(cap,0,{title:'Dein Kapitän'});return;}
+  showReveal({front:cardHTML(cap,g),back:'<div class="back lgd">🏀</div>',from:null,glow:TIER_COL.Legend,kicker:'Dein Kapitän · zufällig gezogen',title:esc(DB[cap].name),sub:`${POS_NAME[DB[cap].pos]} · OVR ${rating(g,cap)} · Skill: ${esc(DB[cap].skill)}`});
+}
+function upResume(){const r=UI.upRun;if(!r)return;ST=JSON.parse(JSON.stringify(r));UI.slot=null;UI.m=null;UI.lu=null;go(ST.phase==='match'||ST.phase==='lineup'?'up_hub':ST.phase);}
+function upOffers(){
+  const g=G_(0),left=9-g.roster.length,d=ST.decks.FA,out=[];
+  const ok=id=>g.roster.indexOf(id)<0&&missingPos(g.roster.concat(id)).length<=left-1;
+  for(let i=0;i<d.length&&out.length<3;i++)if(ok(d[i]))out.push(d[i]);
+  out.forEach(id=>d.splice(d.indexOf(id),1));ST.up.offers=out;
+}
+function upPick(i){
+  const u=ST.up,id=u.offers[i];if(!id)return;const g=G_(0);
+  g.roster.push(id);u.offers.forEach(x=>{if(x!==id)ST.decks.FA.push(x);});u.offers=[];
+  if(g.roster.length<9){upOffers();upSave();render();return;}
+  upNextStage();
+}
+function vUpDraft(){
+  const u=ST.up,g=G_(0),n=g.roster.length;
+  app(`${phaseHead('Ultimate Pick · Draft',`Pick ${n} von 8`,'Wähle 1 von 3 Spielern. Am Ende brauchst du mindestens 2 Guards, 2 Forwards und 1 Center.')}
+<div class="row wrap mt">${needChips(g.roster)}<span class="chip">👥 ${n}/9</span></div>
+<div class="grid4 mt">${u.offers.map((id,i)=>`<div class="cw sel" onclick="upPickTap(${i})">${cardHTML(id,null)}</div>`).join('')}</div>
+<div class="panel"><div class="lbl">Dein Kader</div><div class="col">${sortRoster(g).map(id=>pRow(0,id,{click:`cardSheet('${id}',0)`})).join('')}</div></div>`);
+}
+function upPickTap(i){const id=ST.up.offers[i];if(!id)return;cardSheet(id,null,{actions:[{label:`Wählen · ${DB[id].sal} Mio`,cls:'ok',fn:()=>{closeSheet();upPick(i);}}]});}
+
+/* ── Gegner & Stufen ── */
+function upMakeOpp(st){
+  const me=G_(0),mine=new Set(me.roster),boss=st%5===0;
+  let nL=st>=10?2:(st>=7?1:0),nS=st>=10?4:(st>=7?3:(st>=4?2:0));if(boss)nL=Math.max(nL,1);
+  const pools={L:shuffle(IDS('L').filter(x=>!mine.has(x))),S:shuffle(IDS('S').filter(x=>!mine.has(x))),B:shuffle(IDS('B').filter(x=>!mine.has(x)))};
+  if(st<=2)pools.B.sort((a,b)=>rating(null,a)-rating(null,b));
+  const want={G:3,F:3,C:2},tiers=[];for(let i=0;i<nL;i++)tiers.push('L');for(let i=0;i<nS;i++)tiers.push('S');while(tiers.length<8)tiers.push('B');
+  const roster=[];
+  tiers.forEach(t=>{const take=p=>p.find(x=>want[DB[x].pos]>0&&roster.indexOf(x)<0);const id=take(pools[t])||take(pools.S)||take(pools.B);if(id){roster.push(id);want[DB[id].pos]--;}});
+  const others=[0,1,2,3,4,5].filter(t=>t!==me.team),o=upGM(pick(BOT_NAMES),pick(others),true);
+  o.roster=roster;const n=(st>=10?Math.floor((st-8)/2):0)+(boss?1:0);if(n>0)roster.forEach(id=>{o.up[id]={n:n};});
+  o.capX=nL*60+(boss?40:0)+(st>=10?40:0);
+  ST.gms[1]=o;ST.up.boss=boss;ST.up.scout=shuffle(roster.slice()).slice(0,2);
+  const home=st%2===1;
+  ST.sched=[{stage:'UP',label:`Stufe ${st}${boss?' · Boss':''}`,games:[{h:home?0:1,a:home?1:0,hs:null,as:null}]}];ST.md=0;
+}
+function upNextStage(){const u=ST.up;upMakeOpp(u.stage);u.relLeft=3;u.shop=[];u.reward=null;ST.phase='up_hub';upSave();go('up_hub');}
+function upTeamAvg(gi){const g=G_(gi),l=autoLineup(g);return l.length?Math.round(l.reduce((a,id)=>a+rating(g,id),0)/l.length):0;}
+function vUpHub(){
+  const u=ST.up,g=G_(0),o=G_(1),st=u.stage,mult=u.wins>=9?1.5:(u.wins>=4?1.2:1);
+  app(`${phaseHead('Ultimate Pick',`Stufe ${st}${u.boss?' · Boss-Spiel':''}`,u.boss?'Ein besonders starker Gegner mit Legend – ein Sieg bringt +50 Bonuspunkte.':'')}
+<div class="row wrap mt"><span class="chip acc">🏆 ${fmtPts(u.score)} Punkte</span><span class="chip">✅ ${u.wins} Siege</span>${mult>1?`<span class="chip ok">Serie ×${String(mult).replace('.',',')}</span>`:''}</div>
+<div class="panel mine"><div class="lbl">Nächster Gegner</div><div class="row">${badge(0,1)}<div class="grow" style="text-align:center"><div class="b">${ST.sched[0].games[0].h===0?'Heimspiel':'Auswärtsspiel'}</div><div class="s mut">${ST.sched[0].games[0].h===0?'Du greifst zuerst an – mit einem Guard':esc(o.name)+' greift zuerst an'}</div></div>${badge(1,1)}</div>
+<div class="row between mt s"><span class="b">Du · Ø ${upTeamAvg(0)}</span><span class="b">${esc(o.name)} · Ø ${upTeamAvg(1)}</span></div></div>
+<div class="panel"><div class="lbl">Scouting-Bericht <span>2 von ${o.roster.length} Spielern</span></div><div class="grid4">${u.scout.map(id=>`<div class="cw" onclick="cardSheet('${id}',1)">${cardHTML(id,o)}</div>`).join('')}</div></div>
+<div class="panel"><div class="lbl">Dein Kader <span>${g.roster.length}/${CFG.ROSTER_MAX}</span></div><div class="col">${sortRoster(g).map(id=>pRow(0,id,{click:`cardSheet('${id}',0)`})).join('')}</div></div>
+<div class="cta"><div class="in"><button class="btn" onclick="enterLineup()">Aufstellung &amp; Spielen</button></div></div>`);
+}
+
+/* ── Punkte nach dem Spiel ── */
+function upAfterGame(m){
+  const u=ST.up,s=u.stage,g=G_(0),o=G_(1),myIds=m.me.map(x=>x.id),opIds=m.op.map(x=>x.id),win=m.sMe>m.sOp;u.lastLu=myIds;
+  if(win){
+    let a=0,b=0,cb=false;m.log.forEach(l=>{if(l.me)a++;else b++;if(b===2&&a===0)cb=true;});
+    const avg=(gg,ids)=>ids.reduce((x,id)=>x+rating(gg,id),0)/Math.max(1,ids.length),und=avg(o,opIds)>avg(g,myIds);
+    const last=m.log[m.log.length-1],myCard=last?(myIds.indexOf(last.a)>-1?last.a:last.d):null,rk=!!myCard&&DB[myCard].tier==='Rookie';
+    const parts=[['Sieg',100],[`Stufe ${s}`,20*s]];
+    if(m.sOp===0)parts.push(['Sweep 3:0',50]);else if(m.sOp===1)parts.push(['Sieg 3:1',25]);
+    if(cb)parts.push(['Comeback nach 0:2',40]);if(und)parts.push(['Underdog',30]);if(rk)parts.push(['Rookie entscheidet',15]);if(u.boss)parts.push(['Boss besiegt',50]);
+    u.wins++;const mult=u.wins>=10?1.5:(u.wins>=5?1.2:1),tot=Math.round(parts.reduce((x,p)=>x+p[1],0)*mult);
+    u.score+=tot;u.games.push({s:s,me:m.sMe,op:m.sOp,pts:tot,opp:o.name,team:o.team});u.last={parts:parts,mult:mult,tot:tot,win:true};
+    u.stage++;upPrepReward();ST.phase='up_reward';upSave();go('up_reward');
+  }else{
+    const tot=10*m.sMe;u.score+=tot;u.games.push({s:s,me:m.sMe,op:m.sOp,pts:tot,opp:o.name,team:o.team});
+    u.last={parts:[['Trostpunkte · '+m.sMe+' gewonnene Duelle',tot]],mult:1,tot:tot,win:false};upFinish();
+  }
+}
+function upBreakdown(l){if(!l)return '';return `<div class="panel ${l.win?'mine':''}"><div class="lbl">${l.win?'Punkte für den Sieg':'Letztes Spiel'} <span class="b" style="color:${l.win?'var(--ok)':'var(--sub)'}">+${fmtPts(l.tot)}</span></div><div class="col" style="gap:4px">${l.parts.map(p=>`<div class="row between s"><span class="mut">${esc(p[0])}</span><b>+${p[1]}</b></div>`).join('')}${l.mult>1?`<div class="row between s"><span class="mut">Serienmultiplikator</span><b>×${String(l.mult).replace('.',',')}</b></div>`:''}</div></div>`;}
+
+/* ── Belohnung ── */
+function upPrepReward(){
+  const u=ST.up,g=G_(0),rk=[];
+  if(g.roster.length<CFG.ROSTER_MAX){const d=ST.decks.R;for(let i=0;i<3&&d.length;i++)rk.push(d.shift());}
+  const upg=u.lastLu.filter(id=>g.roster.indexOf(id)>-1&&DB[id].tier==='Rookie'&&lvl(g,id)<CFG.UP_MAX);
+  u.reward={rookies:rk,upg:upg};
+}
+function upRewardDone(){const u=ST.up;(u.reward&&u.reward.rookies||[]).forEach(x=>ST.decks.R.push(x));u.reward=null;upPrepShop();ST.phase='up_shop';upSave();go('up_shop');}
+function upTakeRookie(id){const g=G_(0),r=ST.up.reward;if(!r||g.roster.length>=CFG.ROSTER_MAX)return;g.roster.push(id);r.rookies=r.rookies.filter(x=>x!==id);toast(DB[id].name+' ist jetzt in deinem Team');upRewardDone();}
+function upUpgrade(id){const g=G_(0);doUp(g,id);toast(`${DB[id].name} steigt auf ${lvl(g,id)}★ – alle Werte +${CFG.UP_STEP}`);upRewardDone();}
+function upNoReward(){G_(0).trade++;toast('Keine Belohnung möglich – dafür +1 Trade-Karte');upRewardDone();}
+function vUpReward(){
+  const u=ST.up,r=u.reward||{rookies:[],upg:[]},g=G_(0),none=!r.rookies.length&&!r.upg.length;
+  app(`${phaseHead('Ultimate Pick · Sieg',`Belohnung wählen`,'Nimm einen neuen Rookie oder lass einen Rookie aus diesem Spiel einen Stern aufsteigen.')}
+<div class="row wrap mt"><span class="chip acc">🏆 ${fmtPts(u.score)} Punkte</span><span class="chip">✅ ${u.wins} Siege</span></div>
+${upBreakdown(u.last)}
+${r.rookies.length?`<div class="panel"><div class="lbl">Rookie-Draft · 1 von 3</div><div class="grid4">${r.rookies.map(id=>`<div class="cw sel" onclick="upRookieTap('${id}')">${cardHTML(id,null)}</div>`).join('')}</div></div>`:(g.roster.length>=CFG.ROSTER_MAX?'<div class="panel"><div class="s mut">Dein Kader ist voll – kein Rookie-Draft möglich. Gib im nächsten Schritt Spieler ab, um Platz zu schaffen.</div></div>':'')}
+${r.upg.length?`<div class="panel"><div class="lbl">Rookie-Upgrade · +1 Stern</div><div class="col">${r.upg.map(id=>pRow(0,id,{click:`upUpgradeTap('${id}')`})).join('')}</div></div>`:'<div class="panel"><div class="s mut">Kein Rookie aus diesem Spiel kann aufsteigen.</div></div>'}
+${none?`<div class="cta"><div class="in"><button class="btn" onclick="upNoReward()">Weiter · +1 Trade-Karte</button></div></div>`:''}`);
+}
+function upRookieTap(id){cardSheet(id,null,{actions:[{label:'Diesen Rookie nehmen',cls:'ok',fn:()=>{closeSheet();upTakeRookie(id);}}]});}
+function upUpgradeTap(id){const g=G_(0);cardSheet(id,0,{note:`Danach: ${lvl(g,id)+1}★ · alle Werte +${CFG.UP_STEP}`,actions:[{label:'+1 Stern',cls:'ok',fn:()=>{closeSheet();upUpgrade(id);}}]});}
+
+/* ── Kaderumbau & Shop ── */
+function upVal(g,id){const t=DB[id].tier;return t==='Rookie'?1+lvl(g,id):(UP_TC[t]||1);}
+function upPrepShop(){
+  const u=ST.up,g=G_(0),out=[],d=ST.decks.FA;
+  for(let i=0;i<d.length&&out.length<4;i++)if(g.roster.indexOf(d[i])<0)out.push(d[i]);
+  out.forEach(id=>d.splice(d.indexOf(id),1));
+  if(u.stage>=5&&Math.random()<.25&&ST.decks.L.length){const L=ST.decks.L.find(x=>g.roster.indexOf(x)<0);if(L){ST.decks.L.splice(ST.decks.L.indexOf(L),1);const old=out.pop();if(old)d.push(old);out.push(L);}}
+  u.shop=out;
+}
+function upRelease(id){
+  const u=ST.up,g=G_(0);if(u.relLeft<=0||releaseCheck(g,id))return;const v=upVal(g,id);
+  g.roster=g.roster.filter(x=>x!==id);delete g.up[id];g.trade+=v;u.relLeft--;
+  (DB[id].tier==='Rookie'?ST.decks.R:(DB[id].tier==='Legend'?ST.decks.L:ST.decks.FA)).push(id);
+  toast(`${DB[id].name} abgegeben · +${v} Trade-Karte${v>1?'n':''}`);upSave();render();
+}
+function upBuy(id){
+  const u=ST.up,g=G_(0),p=UP_PRICE[DB[id].tier]||1;if(g.trade<p||g.roster.length>=CFG.ROSTER_MAX)return;
+  g.trade-=p;g.roster.push(id);u.shop=u.shop.filter(x=>x!==id);toast(`${DB[id].name} verpflichtet`);upSave();render();
+}
+function upRelTap(id){
+  const u=ST.up,g=G_(0),why=u.relLeft<=0?'Diese Runde schon 3 Spieler abgegeben':releaseCheck(g,id),v=upVal(g,id);
+  cardSheet(id,0,{actions:[{label:why||`Abgeben · +${v} Trade-Karte${v>1?'n':''}`,cls:why?'sec':'bad',disabled:!!why,fn:()=>{closeSheet();upRelease(id);}}]});
+}
+function upBuyTap(id){
+  const g=G_(0),p=UP_PRICE[DB[id].tier]||1,why=g.roster.length>=CFG.ROSTER_MAX?'Kader voll (max. 11)':(g.trade<p?'Zu wenige Trade-Karten':'');
+  cardSheet(id,null,{actions:[{label:why||`Kaufen · ${p} Trade-Karte${p>1?'n':''}`,cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();upBuy(id);}}]});
+}
+function vUpShop(){
+  const u=ST.up,g=G_(0);
+  app(`${phaseHead('Ultimate Pick · Kaderumbau',`Vor Stufe ${u.stage}`,'Gib bis zu 3 Spieler gegen Trade-Karten ab und hol dir im Shop neue. Basic 1 · All-Star 2 · Legend 3 · Rookie 1 + 1 je Stern.')}
+<div class="row wrap mt"><span class="chip acc">🎟 ${g.trade} Trade-Karten</span><span class="chip">👥 ${g.roster.length}/${CFG.ROSTER_MAX}</span>${needChips(g.roster)}</div>
+<div class="panel"><div class="lbl">Shop <span>${u.shop.length} Angebote</span></div>${u.shop.length?`<div class="grid4">${u.shop.map(id=>{const p=UP_PRICE[DB[id].tier]||1;return `<div><div class="cw ${g.trade>=p&&g.roster.length<CFG.ROSTER_MAX?'':'dis'}" onclick="upBuyTap('${id}')">${cardHTML(id,null)}</div><div class="s b" style="text-align:center;margin-top:4px">🎟 ${p}</div></div>`;}).join('')}</div>`:'<div class="s mut">Alles ausverkauft.</div>'}</div>
+<div class="panel"><div class="lbl">Spieler abgeben <span>noch ${u.relLeft} von 3</span></div><div class="col">${sortRoster(g).map(id=>pRow(0,id,{cls:(u.relLeft<=0||releaseCheck(g,id))?'off':'',click:`upRelTap('${id}')`})).join('')}</div></div>
+<div class="cta"><div class="in"><button class="btn" onclick="upShopDone()">Weiter → Stufe ${u.stage}</button></div></div>`);
+}
+function upShopDone(){const u=ST.up;(u.shop||[]).forEach(id=>(DB[id].tier==='Legend'?ST.decks.L:ST.decks.FA).push(id));u.shop=[];upNextStage();}
+
+/* ── Run-Ende, Verlauf & Rangliste ── */
+function upFinish(gaveUp){
+  const u=ST.up,g=G_(0),cap=g.roster.find(id=>DB[id].tier==='Legend')||g.roster[0];
+  if(gaveUp)u.last={parts:[['Run aufgegeben',0]],mult:1,tot:0,win:false};
+  const e={name:g.name,team:g.team,score:u.score,wins:u.wins,cap:cap||'',at:Date.now(),group:u.group||''};
+  UP_HIST.push(e);UP_HIST.sort((a,b)=>b.score-a.score||b.wins-a.wins||a.at-b.at);UP_HIST=UP_HIST.slice(0,20);kvSet('tp_up_hist',JSON.stringify(UP_HIST));
+  kvDel('tp_up_run');UI.upRun=null;UI.upLB=null;UI.m=null;
+  ST.phase='up_over';ST.up.result=e;render();window.scrollTo(0,0);if(e.score>0)setTimeout(()=>confetti(80),300);
+  upSubmit(e);
+}
+function upGiveUpAsk(){openSheet(`<div style="font-size:44px;text-align:center">🛑</div><div class="h2" style="text-align:center">Run aufgeben?</div><div class="sub mt" style="text-align:center">Der Run endet sofort. Deine bisherigen ${fmtPts(ST.up.score)} Punkte werden gewertet.</div><div class="col mt"><button class="btn bad" data-act="y">Ja, aufgeben</button><button class="btn sec" data-act="x">Weiterspielen</button></div>`,{y:()=>{closeSheet();UI.shLock=false;arClear();const a=$('arena');a.classList.add('hidden');a.innerHTML='';upFinish(true);},x:closeSheet});}
+function upAbandonAsk(){const r=UI.upRun;if(!r)return;openSheet(`<div style="font-size:44px;text-align:center">🛑</div><div class="h2" style="text-align:center">Laufenden Run aufgeben?</div><div class="sub mt" style="text-align:center">Deine ${fmtPts(r.up.score)} Punkte aus ${r.up.wins} Siegen werden gewertet, dann kannst du neu starten.</div><div class="col mt"><button class="btn bad" data-act="y">Ja, aufgeben</button><button class="btn sec" data-act="x">Abbrechen</button></div>`,{y:()=>{closeSheet();ST=JSON.parse(JSON.stringify(r));upFinish(true);},x:closeSheet});}
+function upLeave(to){ST=null;UI.m=null;UI.lu=null;UI.screen=to||'menu';window.scrollTo(0,0);render();}
+function vUpOver(){
+  const u=ST.up,e=u.result||{score:u.score,wins:u.wins},best=UP_HIST.length?UP_HIST[0].score:0,rec=e.score>=best&&e.score>0;
+  app(`<div style="text-align:center;padding:18px 0 6px"><div class="kick">Ultimate Pick · Run beendet</div><div class="h1" style="font-size:52px;margin-top:6px">${fmtPts(e.score)}</div><div class="sub">Punkte · ${e.wins} Sieg${e.wins===1?'':'e'} in Folge</div>${rec?'<div class="chip ok" style="margin-top:10px">Neuer persönlicher Rekord</div>':`<div class="s mut" style="margin-top:8px">Dein Rekord: ${fmtPts(best)} Punkte</div>`}</div>
+${upBreakdown(u.last)}
+<div class="panel"><div class="lbl">Deine Spiele</div><div class="col">${u.games.map(x=>`<div class="item">${badgeT(x.team)}<div class="grow"><div class="b s">Stufe ${x.s} · ${esc(x.opp)}</div><div class="s mut">${x.me}:${x.op} ${x.me>x.op?'gewonnen':'verloren'}</div></div><b style="color:${x.me>x.op?'var(--ok)':'var(--sub)'}">+${fmtPts(x.pts)}</b></div>`).join('')||'<div class="s mut">Keine Spiele gespielt.</div>'}</div></div>
+<div class="col mt"><button class="btn sec" onclick="upLeave('upboard')">🏆 Rangliste</button></div>
+<div class="cta"><div class="in"><button class="btn sec" onclick="upLeave('menu')">Hauptmenü</button><button class="btn" onclick="upLeave('up')">Neuer Run</button></div></div>`);
+}
+function upLBPath(grp){return grp?'tp/UPG_'+grp+'/runs':'tp/UPG/runs';}
+function upMyId(){return String(NET.uid||NET.pid||'anon').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)||'anon';}
+async function upSubmit(e){
+  if(NET.status!=='ok'||!NET.db||!(e.score>0))return;const id=upMyId(),rec=Object.assign({},e,{u:id});
+  for(const p of [upLBPath('')].concat(e.group?[upLBPath(e.group)]:[])){
+    try{const ref=NET.db.doc(p+'/'+id),d=await ref.get(),old=d.exists?d.data():null;if(!old||!(old.score>=e.score))await ref.set(rec);}catch(err){}
+  }
+  UI.upLB=null;
+}
+function upFetch(path){
+  return new Promise(res=>{let done=false,un=null;const fin=v=>{if(done)return;done=true;setTimeout(()=>{try{un&&un();}catch(e){}},0);res(v);};
+    try{un=NET.db.collection(path).onSnapshot(s=>fin(s.docs.map(d=>d.data()).filter(x=>x&&typeof x.score==='number')),()=>fin(null));}catch(e){fin(null);}
+    setTimeout(()=>fin(null),8000);});
+}
+async function upLoadLB(){
+  if(NET.status!=='ok'||!NET.db||UI.upLBBusy)return;UI.upLBBusy=true;
+  const grp=upCleanGroup(UI.up.group),sort=a=>(a||[]).sort((x,y)=>y.score-x.score||y.wins-x.wins||x.at-y.at).slice(0,50);
+  const g=await upFetch(upLBPath('')),gr=grp?await upFetch(upLBPath(grp)):null;
+  UI.upLB={g:g?sort(g):null,grp:gr?sort(gr):(grp?[]:null),code:grp,at:Date.now()};UI.upLBBusy=false;if(!ST&&UI.screen==='upboard')render();
+}
+function lbRow(e,k,mine){return `<div class="item" style="${mine?'border-color:rgba(var(--acc-rgb),.55);background:rgba(var(--acc-rgb),.08)':''}"><div class="b" style="width:26px;text-align:right">${k+1}.</div>${badgeT(e.team|0)}<div class="grow"><div class="b s">${esc(e.name||'GM')}${mine?' (Du)':''}</div><div class="s mut">${e.wins} Siege${e.cap&&DB[e.cap]?' · Kapitän '+esc(DB[e.cap].name):''}</div></div><b>${fmtPts(e.score)}</b></div>`;}
+function vUpBoard(){
+  const on=NET.status==='ok',grp=upCleanGroup(UI.up.group),tab=UI.upTab==='grp'&&!grp?'g':UI.upTab;
+  if(on&&(!UI.upLB||Date.now()-UI.upLB.at>30000||UI.upLB.code!==grp))upLoadLB();
+  const lb=UI.upLB,me=upMyId();
+  let list='';
+  if(tab==='me')list=UP_HIST.length?UP_HIST.map((e,k)=>lbRow(e,k,false)).join(''):'<div class="s mut">Noch keine Runs gespielt.</div>';
+  else if(!on)list='<div class="s mut">Für die Rangliste brauchst du eine Online-Verbindung.</div>';
+  else if(!lb||UI.upLBBusy&&!lb)list='<div class="row"><div class="dots"><i></i><i></i><i></i></div><div class="s mut">Rangliste wird geladen …</div></div>';
+  else{const L=tab==='grp'?lb.grp:lb.g;list=L===null?'<div class="s mut">Die Rangliste konnte nicht geladen werden.</div>':(L.length?L.map((e,k)=>lbRow(e,k,e.u===me)).join(''):'<div class="s mut">Noch keine Einträge – sei der Erste!</div>');}
+  app(`<button class="btn sec sm" onclick="screen('up')">← Ultimate Pick</button><div class="mt">${phaseHead('Ultimate Pick','Rangliste','Dein bester Run zählt. Bei Gleichstand entscheiden mehr Siege.')}</div>
+<div class="tabs"><button class="tab ${tab==='g'?'on':''}" onclick="UI.upTab='g';render()">Global</button>${grp?`<button class="tab ${tab==='grp'?'on':''}" onclick="UI.upTab='grp';render()">Gruppe ${esc(grp)}</button>`:''}<button class="tab ${tab==='me'?'on':''}" onclick="UI.upTab='me';render()">Meine Runs</button></div>
+<div class="col mt">${list}</div>
+${grp?'':'<div class="s mut mt" style="text-align:center">Mit einem Gruppencode bekommt dein Freundeskreis eine eigene Rangliste. Du trägst ihn beim Start eines Runs ein.</div>'}`);
+}
+function upRulesSheet(){openSheet(`<div class="h2">Ultimate Pick – so funktioniert's</div><div class="col mt s" style="line-height:1.6;color:var(--sub)">
+<div><b style="color:var(--fg)">Start:</b> Ein Kapitän (Legend) wird zufällig gezogen. Danach draftest du 8 Spieler, jeweils 1 aus 3.</div>
+<div><b style="color:var(--fg)">Spiele:</b> Best of 5 gegen KI-Teams, die mit jeder Stufe stärker werden. Jede 5. Stufe ist ein Boss-Spiel. Kein Simulieren, keine Ereigniskarten, keine Verletzungen.</div>
+<div><b style="color:var(--fg)">Belohnung:</b> Nach jedem Sieg ein Rookie (1 aus 3) oder +1 Stern für einen Rookie, der gespielt hat.</div>
+<div><b style="color:var(--fg)">Kaderumbau:</b> Nach jeder Runde bis zu 3 Spieler gegen Trade-Karten abgeben (Basic 1, All-Star 2, Legend 3, Rookie 1 + 1 je Stern) und im Shop neue kaufen. Kader 8–11 Spieler.</div>
+<div><b style="color:var(--fg)">Punkte:</b> Sieg 100 · +20 pro Stufe · 3:0 +50 · 3:1 +25 · Comeback nach 0:2 +40 · Underdog +30 · Rookie entscheidet +15 · Boss +50. Ab dem 5. Sieg ×1,2, ab dem 10. ×1,5.</div>
+<div><b style="color:var(--fg)">Ende:</b> Die erste Niederlage beendet den Run (10 Trostpunkte pro gewonnenem Duell).</div></div><button class="btn sec mt" data-act="x">Schließen</button>`,{x:closeSheet});}
+function upTeam(i){UI.up.team=i;render();}
+function vUp(){
+  const r=UI.upRun,best=UP_HIST.length?UP_HIST[0]:null,longest=UP_HIST.reduce((a,e)=>Math.max(a,e.wins),0),u=UI.up;
+  app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button><div class="mt">${phaseHead('Rogue-Modus','Ultimate Pick','Kapitän ziehen, 8 Spieler draften, dann Spiel um Spiel gegen immer stärkere Teams. Die erste Niederlage beendet den Run.')}</div>
+${r?`<div class="panel mine"><div class="lbl">Laufender Run</div><div class="row">${badgeT(r.gms[0].team)}<div class="grow"><div class="b">Stufe ${r.up.stage} · ${fmtPts(r.up.score)} Punkte</div><div class="s mut">${r.up.wins} Siege${r.gms[0].roster[0]?' · Kapitän '+esc(DB[r.gms[0].roster[0]].name):''}</div></div></div><div class="col mt"><button class="btn" onclick="upResume()">Run fortsetzen</button><button class="btn sec" onclick="upAbandonAsk()">Run aufgeben</button></div></div>`:''}
+<div class="row wrap mt"><span class="chip">🏆 Rekord ${best?fmtPts(best.score):'–'}</span><span class="chip">✅ Längste Serie ${longest}</span><span class="chip">${UP_HIST.length} Runs</span></div>
+${r?'':`<div class="panel"><div class="lbl">Dein Name</div><input class="inp" maxlength="14" value="${esc(u.name)}" oninput="UI.up.name=this.value" placeholder="Name für die Rangliste"></div>
+<div class="panel"><div class="lbl">Dein Team</div>${teamPicker(u.team|0,'upTeam')}</div>
+<div class="panel"><div class="lbl">Gruppencode <span>optional</span></div><input class="inp" maxlength="12" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.15em" value="${esc(u.group||'')}" oninput="UI.up.group=this.value" placeholder="z. B. JUNGS24"><div class="s mut" style="margin-top:8px">Alle mit demselben Code landen zusätzlich in einer eigenen Gruppen-Rangliste.</div></div>`}
+<div class="row mt" style="gap:8px"><button class="btn sec" onclick="screen('upboard')">🏆 Rangliste</button><button class="btn sec" onclick="upRulesSheet()">📖 So geht's</button></div>
+${r?'':'<div class="cta"><div class="in"><button class="btn" onclick="upStart()">Run starten</button></div></div>'}`);
+}
+function careerSheet(){
+  const b=(icon,t1,t2,fn)=>`<button class="mbtn" data-act="${fn}"><div class="mi">${icon}</div><div class="grow"><div class="mt1">${t1}</div><div class="mt2">${t2}</div></div><div class="mut b" style="font-size:20px">›</div></button>`;
+  openSheet(`<div class="h2">GM Career</div><div class="sub">Mehrere Saisons bis zum BYT World Champion.</div>${b('🤖','Offline','Gegen KI-Manager · 2–6 Teams','off')}${b('👥','Online','Mit Freunden · jeder auf seinem Gerät','on')}<button class="btn sec mt" data-act="x">Schließen</button>`,
+    {off:()=>{closeSheet();screen('start');},on:()=>{closeSheet();screen('online');},x:closeSheet});
+}
+
 /* ═════════════ VIEWS & START ═════════════ */
-const VIEWS={start:vStart,dice:vDice,captain:vCaptain,fa:vFA,draft:vDraft,hub:vHub,lineup:vLineup,match:vMatch,events:vEvents,season:vSeason,champion:vChampion,trade:vTrade,release:vRelease};
+const VIEWS={up_draft:vUpDraft,up_hub:vUpHub,up_reward:vUpReward,up_shop:vUpShop,up_over:vUpOver,start:vStart,dice:vDice,captain:vCaptain,fa:vFA,draft:vDraft,hub:vHub,lineup:vLineup,match:vMatch,events:vEvents,season:vSeason,champion:vChampion,trade:vTrade,release:vRelease};
 $('sheet').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');
   if(b){if(b.disabled)return;const f=UI.sh[b.dataset.act];if(f)f();return;}
@@ -2975,6 +3219,7 @@ render();
 if(LOGO_IMG){['icon','apple-touch-icon'].forEach(r=>{const l=document.createElement('link');l.rel=r;l.href=LOGO_IMG;document.head.appendChild(l);});}
 netInit();
 slotsLoad().then(()=>{if(!ST&&!NET.on)render();});
+upLoadMeta().then(()=>{if(!ST&&!NET.on)render();});
 </script>
 </body>
 </html>

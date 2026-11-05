@@ -679,7 +679,7 @@ function go(ph){
   const a=$('app');a.classList.remove('enter');void a.offsetWidth;a.classList.add('enter');clearTimeout(enterT);enterT=setTimeout(()=>a.classList.remove('enter'),650);
   const it=introFor(prev,ph);if(it)showIntro(it);
   if(ph==='events')evReveal();
-  if((ph==='season'||ph==='champion')&&ST.res&&ST.res.champ===0)setTimeout(()=>confetti(ph==='champion'?220:140),450);
+  if((ph==='season'||ph==='champion')&&ST.res&&ST.res.champ===0)setTimeout(()=>{confetti(ph==='champion'?220:140);sfx('win');},450);
 }
 function isMatchView(){if(!ST)return false;if(!NET.on)return ST.phase==='match'&&!!UI.m;if(ST.phase!=='hub'||UI.view==='hub')return false;const k=myGame();if(k<0)return false;const G=curMd().games[k];return !!G&&G.st==='live';}
 function applyTheme(){
@@ -2472,7 +2472,7 @@ function netBuildBalls(){
 function botReleases(){
   ST.gms.forEach((g,i)=>{if(!g.bot||g.roster.length<9||Math.random()>.7)return;const c=g.roster.slice().sort((a,b)=>rating(g,a)-rating(g,b)).find(id=>!releaseCheck(g,id));if(c){doRelease(i,c);fx('msg',g.name+' entlässt '+DB[c].name);}});
 }
-FX.confetti=(d,done)=>{confetti(200);done();};
+FX.confetti=(d,done)=>{confetti(200);sfx('win');done();};
 
 /* ── Warte-Leiste mit Host-Knopf (für Phasen ohne Timer) ── */
 function waitBtns(){

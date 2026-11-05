@@ -416,8 +416,7 @@ const FIREBASE_CONFIG={
 };
 /* 3) MUSIK & SOUNDS: Lege MP3-Dateien ins Repository (neben die index.html oder in einen Ordner "musik"):
       ladescreen_Künstler_Songtitel.mp3  → läuft auf dem Startbildschirm und in allen Menüs
-      menu_Künstler_Songtitel.mp3        → wechselnde Songs in den Spielphasen: Spieltag, Draft, Trades, Offseason
-      game_Künstler_Songtitel.mp3        → wechselnde Songs während der Duelle (beliebig viele)
+      menu_Künstler_Songtitel.mp3        → wechselnde Songs, sobald ein Spiel läuft – im Duell etwas leiser
       Künstler und Titel werden aus dem Dateinamen gelesen und unter Einstellungen → Credits angezeigt.
       Duell-Sounds: sfx_angriff_treffer (mein Angriff, Punkt für mich), sfx_angriff_fehlwurf (mein Angriff, Punkt für Gegner),
       sfx_abwehr_kassiert (sein Angriff, Punkt für Gegner), sfx_abwehr_stopp (sein Angriff, Punkt für mich).
@@ -1219,7 +1218,13 @@ function lineupValid(g,ids){
   const r=lineupReq(g);for(const p in r)if(cnt(ids,p)<r[p])return false;
   return lineupCost(ids)<=capOf(g);
 }
-function enterLineup(){UI.lu=autoLineup(G_(0));go('lineup');}
+function upLastLineup(){
+  const g=G_(0),last=(ST.up&&ST.up.lastLu)||[],keep=last.filter(id=>g.roster.indexOf(id)>-1);
+  if(keep.length===5&&lineupValid(g,keep))return keep.slice();
+  let best=null,bs=-1;combos(g.roster,5).forEach(c=>{if(!keep.every(id=>c.indexOf(id)>-1)||!lineupValid(g,c))return;const sc=c.reduce((a,id)=>a+rating(g,id),0);if(sc>bs){bs=sc;best=c;}});
+  return best||autoLineup(g);
+}
+function enterLineup(){UI.lu=ST.mode==='up'?upLastLineup():autoLineup(G_(0));go('lineup');}
 function vLineup(){
   const me=G_(0),md=ST.sched[ST.md],my=md&&md.games.find(x=>x.h===0||x.a===0);
   if(!my){ST.phase=ST.mode==='up'?'up_hub':'hub';render();return;}
@@ -1261,6 +1266,7 @@ function enterMatch(){
     me:arrange(UI.lu).map(id=>({id:id,used:false,won:false,rev:true})),
     op:arrange(autoLineup(G_(opp))).map(id=>({id:id,used:false,won:false,rev:false})),
     myTurn:home,first:true,phase:'atk',att:-1,def:-1,mode:null,sMe:0,sOp:0,log:[],pending:null};
+  if(ST.mode==='up'){ST.up.lastLu=UI.lu.slice();upSave();}
   UI.lu=null;go('match');
 }
 function canAtk(i){
@@ -2636,7 +2642,7 @@ const SFX_FILE={angriff_treffer:'atk_win',angriff_fehlwurf:'atk_lose',abwehr_kas
 function trackInfo(path){
   const f=path.split('/').pop(),base=f.replace(/\.(mp3|m4a|ogg|wav|aac)$/i,''),m=base.match(/^(ladescreen|menu|game)_(.+)$/i);if(!m)return null;
   const parts=m[2].split('_').map(x=>x.trim()).filter(Boolean);
-  return{kind:{ladescreen:'title',menu:'menu',game:'game'}[m[1].toLowerCase()],src:path.split('/').map(encodeURIComponent).join('/'),file:f,artist:parts.length>1?parts[0]:'Unbekannt',title:parts.length>1?parts.slice(1).join(' '):(parts[0]||'Unbekannt')};
+  return{kind:{ladescreen:'title',menu:'menu',game:'menu'}[m[1].toLowerCase()],src:path.split('/').map(encodeURIComponent).join('/'),file:f,artist:parts.length>1?parts[0]:'Unbekannt',title:parts.length>1?parts.slice(1).join(' '):(parts[0]||'Unbekannt')};
 }
 function audAddFiles(paths){
   (paths||[]).forEach(p=>{
@@ -2674,9 +2680,10 @@ function audLvl(a){const v=Math.max(0,Math.min(1,(a._g||0)*audMusicVol()));if(a.
 function audApplyVol(){if(AUD.sfxOut)AUD.sfxOut.gain.value=Math.max(0,Math.min(1,(+SET.sfx||0)/100));if(AUD.el)audLvl(AUD.el);}
 function audFade(a,to,ms,cb){clearInterval(a._fi);const from=a._g||0,t0=performance.now();a._fi=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/ms);a._g=from+(to-from)*k;audLvl(a);if(k>=1){clearInterval(a._fi);if(cb)cb();}},40);}
 function inMatchNow(){if(!ST)return false;if(!NET.on)return ST.phase==='match';if(ST.phase!=='hub')return false;const k=myGame();if(k<0)return false;const G=curMd().games[k];return !!G&&G.st==='live';}
-function audWant(){if(!ST)return 'title';if(NET.on&&ST.phase==='lobby')return 'title';return inMatchNow()?'game':'menu';}
+function audWant(){if(!ST)return 'title';if(NET.on&&ST.phase==='lobby')return 'title';return 'menu';}
+function audDuckUpdate(){if(!AUD)return;const ar=document.getElementById('arena'),arOn=!!ar&&!ar.classList.contains('hidden'),d=arOn?0.4:(inMatchNow()?0.55:1);if(d!==AUD.duck){AUD.duck=d;audApplyVol();}}
 function audSync(){
-  if(!AUD||!AUD.ready||!AUD.unlocked)return;
+  if(!AUD)return;audDuckUpdate();if(!AUD.ready||!AUD.unlocked)return;
   const want=audWant();if(want===AUD.mode)return;
   AUD.mode=want;audStart(want);
 }
@@ -2757,10 +2764,10 @@ function sfxLoop(k){
 function duelSfx(myAtt,attWin){const k=myAtt?(attWin?'atk_win':'atk_lose'):(attWin?'def_lose':'def_win');sfx(AUD&&AUD.sfxFiles[k]?k:(myAtt===attWin?'point':'miss'));}
 function lotStop(){if(UI.lotStop){UI.lotStop();UI.lotStop=null;}}
 document.addEventListener('visibilitychange',()=>{if(!AUD.el)return;if(document.hidden)AUD.el.pause();else if(AUD.unlocked){const p=AUD.el.play();if(p&&p.catch)p.catch(()=>{});}});
-(function(){const ar=document.getElementById('arena');if(!ar||!window.MutationObserver)return;new MutationObserver(()=>{const d=ar.classList.contains('hidden')?1:0.45;if(d!==AUD.duck){AUD.duck=d;audApplyVol();}}).observe(ar,{attributes:true,attributeFilter:['class']});})();
+(function(){const ar=document.getElementById('arena');if(!ar||!window.MutationObserver)return;new MutationObserver(()=>audDuckUpdate()).observe(ar,{attributes:true,attributeFilter:['class']});})();
 function audSettingsHTML(){
-  const all=AUD.tracks.title.map(t=>({t:t,k:'Start & Hauptmenü'})).concat(AUD.tracks.menu.map(t=>({t:t,k:'Spielphasen'})),AUD.tracks.game.map(t=>({t:t,k:'Im Duell'})));
-  const credits=all.length?all.map(x=>`<div class="item"><div style="font-size:20px">🎵</div><div class="grow"><div class="b s">${esc(x.t.title)}</div><div class="s mut">${esc(x.t.artist)}</div></div><span class="chip">${x.k}</span></div>`).join(''):`<div class="s mut" style="line-height:1.6">Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):<br><b>ladescreen_Künstler_Songtitel.mp3</b> für Startbildschirm und Hauptmenü<br><b>menu_Künstler_Songtitel.mp3</b> für Spieltag, Draft, Trades und Offseason<br><b>game_Künstler_Songtitel.mp3</b> während der Duelle</div>`;
+  const all=AUD.tracks.title.map(t=>({t:t,k:'Start & Hauptmenü'})).concat(AUD.tracks.menu.map(t=>({t:t,k:'Im Spiel'})));
+  const credits=all.length?all.map(x=>`<div class="item"><div style="font-size:20px">🎵</div><div class="grow"><div class="b s">${esc(x.t.title)}</div><div class="s mut">${esc(x.t.artist)}</div></div><span class="chip">${x.k}</span></div>`).join(''):`<div class="s mut" style="line-height:1.6">Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):<br><b>ladescreen_Künstler_Songtitel.mp3</b> für Startbildschirm und Hauptmenü<br><b>menu_Künstler_Songtitel.mp3</b> für Spieltag, Draft, Trades und Offseason</div>`;
   return `<div class="panel"><div class="lbl">Ton</div>
 <div class="row between"><span class="s b">🎵 Musik</span><span class="s mut" id="vol-music">${SET.music}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.music}" oninput="setVol('music',this.value)">
 <div class="row between"><span class="s b">🔊 Effekte & Klicks</span><span class="s mut" id="vol-sfx">${SET.sfx}%</span></div><input type="range" class="rng" min="0" max="100" step="5" value="${SET.sfx}" oninput="setVol('sfx',this.value)" onchange="sfx('point')">

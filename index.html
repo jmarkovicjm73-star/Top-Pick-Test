@@ -125,8 +125,13 @@ button.chip{cursor:pointer;padding:7px 11px}
 .cs{width:var(--cw);display:flex;flex-direction:column;align-items:center;gap:2px}
 .cs .lab{font-size:9px;font-weight:800}
 :root{--cw:clamp(64px,min(calc((100vw - 44px) / 3),calc((100vh - 260px) / 5.6)),120px)}
-@supports (height:100dvh){:root{--cw:clamp(64px,min(calc((100vw - 44px) / 3),calc((100dvh - 260px - env(safe-area-inset-bottom,0px)) / 5.6)),120px)}}
+@supports (height:100svh){:root{--cw:clamp(64px,min(calc((100vw - 44px) / 3),calc((100svh - 260px - env(safe-area-inset-bottom,0px)) / 5.6)),120px)}}
+:root{--cw-lu:var(--cw)}
+@supports (height:100lvh){:root{--cw-lu:clamp(64px,min(calc((100vw - 44px) / 3),calc((100lvh - 260px) / 5.6)),120px)}}
+.court:not(.full) .cs{width:var(--cw-lu)}
 .hcap{display:none}.stb{display:none}
+html:has(body.mm),body.mm{overflow:hidden;overscroll-behavior:none}
+body.mm #app{padding-bottom:0}
 body.mm #hdr .hst{display:none}
 body.mm #hdr .in{padding:6px 12px}
 body.mm #hdr .htop{gap:8px}
@@ -627,7 +632,7 @@ ${inSeason?'<button class="btn sec" data-act="t">📊 Tabelle</button>':''}
 }
 function rosterSheet(){const k=ME(),me=G_(k);openSheet(`<div class="h2">Kader <span class="s mut">${me.roster.length}/${CFG.ROSTER_MAX}</span></div><div class="col mt">${sortRoster(me).map(id=>pRow(k,id,{click:`cardSheet('${id}',${k})`})).join('')}</div><button class="btn sec mt" data-act="x">Schließen</button>`,{x:closeSheet});}
 function rulesSheet(){openSheet(`<div class="h2">Spielregeln (Kurzfassung)</div><div class="col mt s" style="line-height:1.6;color:var(--sub)">
-<div><b style="color:var(--fg)">Ziel:</b> Wer zuerst ${CFG.RINGS_TO_WIN} Ringe gewinnt, ist BYT World Champion.</div>
+<div><b style="color:var(--fg)">Ziel:</b> ${goalRings()>0?`Wer zuerst ${goalText()} gewinnt, ist BYT World Champion.`:'Freies Spiel ohne Ende – sammelt so viele Ringe, wie ihr wollt.'} Das Ziel wird vor Spielbeginn festgelegt.</div>
 <div><b style="color:var(--fg)">Preseason:</b> Würfeln für die GM-Reihenfolge → Kapitän (Legend) verdeckt ziehen → Free Agency (8 offene Karten, reihum, bis jeder 8 Spieler hat) → Draft-Lotterie (1 Rookie).</div>
 <div><b style="color:var(--fg)">Spiel:</b> 5 Spieler (2 Guards, 2 Forwards, 1 Center), zusammen höchstens ${CFG.CAP} Mio. Das Heimteam greift zuerst mit einem Guard an. Der Angreifer wählt Shooting (gegen Perimeter Def) oder Driving (gegen Zone Def) und ein beliebiges Ziel. Höherer Wert = Punkt, Gleichstand = Verteidiger. Abwechselnd, Best of 5.</div>
 <div><b style="color:var(--fg)">Saison:</b> Hin- und Rückrunde, dann Playoffs. Nach jedem Spiel zieht jedes Team eine Ereigniskarte. Rookies steigen über Ereigniskarten bis zu 3 Sterne auf (+3 auf alle Werte pro Stern).</div>
@@ -665,7 +670,7 @@ function go(ph){
   if((ph==='season'||ph==='champion')&&ST.res&&ST.res.champ===0)setTimeout(()=>confetti(ph==='champion'?220:140),450);
 }
 function isMatchView(){if(!ST)return false;if(!NET.on)return ST.phase==='match'&&!!UI.m;if(ST.phase!=='hub'||UI.view==='hub')return false;const k=myGame();if(k<0)return false;const G=curMd().games[k];return !!G&&G.st==='live';}
-function render(){audSync();document.body.classList.toggle('mm',isMatchView());renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
+function render(){audSync();const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
 function seasonLabel(){
   const p=ST.phase;
   if(p==='dice'||p==='captain'||p==='pre_done')return 'Preseason';
@@ -730,6 +735,7 @@ function vSetup(){
   app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button><div style="text-align:center;padding:14px 0 6px">${LOGO_IMG?`<img src="${LOGO_IMG}" alt="TOP PICK" style="width:84px;height:84px;object-fit:contain;display:block;margin:0 auto 6px">`:'<div style="font-size:46px">🏀</div>'}<div class="h1" style="font-size:30px;letter-spacing:.05em">TOP PICK</div><div class="sub">Basketball-Manager · Draft · Free Agency · Playoffs</div></div>
 ${sv_?`<div class="panel"><div class="lbl">Gespeichertes Spiel</div><div class="row">${badgeT(sv_.gms[0].team)}<div class="grow"><div class="b">${esc(TEAMS[sv_.gms[0].team].name)}</div><div class="s mut">Saison ${sv_.season} · ${sv_.gms.length} GMs · 💍 ${sv_.gms[0].rings}</div></div></div><div class="row mt"><button class="btn" onclick="resume()">Fortsetzen</button><button class="btn sec sm" onclick="dropSave()">Löschen</button></div></div>`:''}
 <div class="panel"><div class="lbl">Anzahl GMs</div><div class="seg">${[2,3,4,5,6].map(n=>`<button class="segb ${s.n===n?'on':''}" onclick="UI.setup.n=${n};render()">${n}</button>`).join('')}</div><div class="s mut" style="margin-top:8px">Du + ${s.n-1} KI-Manager</div></div>
+${goalPanelHTML(s.goal||'two',s.goalN||3,'setGoalMode','setGoalN')}
 <div class="panel"><div class="lbl">Dein Name</div><input class="inp" maxlength="16" placeholder="Dein Name" value="${esc(s.name)}" oninput="UI.setup.name=this.value"></div>
 <div class="panel"><div class="lbl">Dein Team</div><div class="teams">${TEAMS.map((t,i)=>`<button class="teamb" style="${s.team===i?`border-color:${t.col};background:${t.col}1f`:''}" onclick="UI.setup.team=${i};render()">${badgeT(i)}<span>${t.name}</span></button>`).join('')}</div></div>
 <button class="btn sec mt" onclick="rulesSheet()">📖 Spielregeln</button>
@@ -741,7 +747,7 @@ function newGame(){
   const others=shuffle([0,1,2,3,4,5].filter(i=>i!==s.team));
   ST={v:2,phase:'dice',season:1,gms:[],order:[],
     decks:{L:shuffle(IDS('L')),FA:shuffle(IDS('S').concat(IDS('B'))),R:shuffle(IDS('R'))},
-    cap:null,fa:null,dr:null,sched:[],md:0,ev:null,seeds:null,res:null,finalLoser:null,midTrade:false,tr:null};
+    cap:null,fa:null,dr:null,sched:[],md:0,ev:null,seeds:null,res:null,finalLoser:null,midTrade:false,tr:null,goal:goalOf(s.goal||'two',s.goalN||3)};
   for(let i=0;i<n;i++)ST.gms.push({name:i===0?name:BOT_NAMES[i-1],team:i===0?s.team:others[i-1],roster:[],trade:0,picks:0,rings:0,ringHolder:false,inj:{},buffs:[],up:{},roll:0,w:0,l:0,pf:0,pa:0});
   UI.saved=null;UI.slot=newSlotId();const nm=TEAMS[s.team].name,dup=SLOTS.filter(x=>x.name.indexOf(nm)===0).length;SLOTS.unshift(slotMeta(UI.slot,ST,dup?nm+' '+(dup+1):nm));slotsSave();go('dice');
 }
@@ -1562,19 +1568,19 @@ function endSeason(){
   const rewards=place.map((gi,k)=>n===2?(k===0?1:3):k+1);
   place.forEach((gi,k)=>{G_(gi).picks+=rewards[k];});
   ST.res={champ:champ,ru:ru,place:place,rewards:rewards,season:ST.season};ST.finalLoser=ru;
-  go(G_(champ).rings>=CFG.RINGS_TO_WIN?'champion':'season');
+  go(goalRings()>0&&G_(champ).rings>=goalRings()?'champion':'season');
 }
 function vSeason(){
   const r=ST.res,C=G_(r.champ),tc=TEAMS[C.team];
   app(`${phaseHead('Saison '+r.season+' · Abschluss','Meisterschaft','')}
 <div class="panel" style="text-align:center;border-color:${tc.col}88"><div style="font-size:54px">💍</div><div class="row" style="justify-content:center;margin:6px 0">${badge(r.champ,1)}</div><div class="h1">${r.champ===0?'Du bist Champion!':esc(C.name)+' ist Champion'}</div><div class="sub">${esc(tc.name)} · ${C.rings} Ring${C.rings>1?'e':''}</div><div class="s mut mt">Der Ringträger erhält +${CFG.RING_BONUS} Mio. Gehaltsspielraum für die Starting 5 der nächsten Saison.</div></div>
 <div class="panel"><div class="lbl">Endplatzierung & Pick-Belohnung</div><div class="col">${r.place.map((gi,k)=>`<div class="item"><div class="b" style="width:22px">${k+1}.</div>${badge(gi)}<div class="grow"><div class="b">${gname(gi)}</div><div class="s mut">${esc(tname(gi))}</div></div><span class="chip acc">+${r.rewards[k]} 🎱</span></div>`).join('')}</div></div>
-<div class="panel"><div class="lbl">Ringe · Ziel ${CFG.RINGS_TO_WIN}</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
+<div class="panel"><div class="lbl">Ringe · Ziel ${goalRings()>0?goalRings():'frei'}</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn" onclick="enterTrade('post')">Weiter → Offseason</button></div></div>`);
 }
 function vChampion(){
   const r=ST.res,C=G_(r.champ);
-  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">BYT World Champion</div><div class="h1" style="font-size:28px">${r.champ===0?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${badge(r.champ,1)}</div><div class="sub">${esc(tname(r.champ))} holt den ${CFG.RINGS_TO_WIN}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
+  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">BYT World Champion</div><div class="h1" style="font-size:28px">${r.champ===0?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${badge(r.champ,1)}</div><div class="sub">${esc(tname(r.champ))} holt den ${goalRings()}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
 <div class="panel"><div class="lbl">Ringe</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn" onclick="resetGame()">Neues Spiel</button></div></div>`);
 }
@@ -1949,7 +1955,7 @@ H.start=(gi,d,pid)=>{
   const used=L.players.map(p=>p.team),free=shuffle([0,1,2,3,4,5].filter(t=>used.indexOf(t)<0));
   ST.gms=L.players.map(p=>newGM(p.name,p.team,p.pid,p.uid,false));
   let b=0;while(ST.gms.length<n){ST.gms.push(newGM('🤖 '+BOT_NAMES[b],free.shift(),null,'',true));b++;}
-  ST.phase='dice';
+  ST.goal=goalOf(L.goalMode||'two',L.goalN||3);ST.phase='dice';
 };
 H.claim=(gi,d,pid)=>{if(ST.phase==='lobby'||ST.closed||ST.gms.some(g=>g.pid===pid))return;const k=d.gi|0,g=ST.gms[k];if(!g)return;
   if(g.bot){g.bot=false;g.name=String((NET.names&&NET.names[pid])||'Gast').slice(0,14);g.pid=pid;g.uid=NET.uids[pid]||'';fx('msg',g.name+' übernimmt '+TEAMS[g.team].name,othersOf(k));return;}
@@ -2057,6 +2063,7 @@ ${Array(bots).fill('<div class="item" style="border-style:dashed;opacity:.6"><di
 ${me?'':(L.players.length>=6?'<div class="item"><div class="s" style="color:var(--bad)">Der Raum ist voll (6 Teams).</div></div>':'<div class="item"><div class="dots"><i></i><i></i><i></i></div><div class="s mut">Dein Beitritt wird bestätigt …</div></div>')}</div></div>
 ${me?`<div class="panel"><div class="lbl">Dein Team</div>${teamPicker(me.team,'lobbyTeam',used)}</div>`:''}
 ${host?`<div class="panel"><div class="lbl">Teams insgesamt</div><div class="seg">${[2,3,4,5,6].map(n=>`<button class="segb ${L.n===n?'on':''}" ${n<L.players.length?'disabled style="opacity:.35"':''} onclick="act('lobby_n',{n:${n}})">${n}</button>`).join('')}</div><div class="s mut" style="margin-top:8px">Freie Plätze füllen KI-Manager auf.</div></div>`:''}
+${host?goalPanelHTML(L.goalMode||'two',L.goalN||3,'lobbyGoalMode','lobbyGoalN'):`<div class="panel"><div class="lbl">Spielziel</div><div class="b">${goalText(goalOf(L.goalMode||'two',L.goalN||3))}</div></div>`}
 <button class="btn sec mt" onclick="leaveOnline()">Raum verlassen</button>
 <div class="cta"><div class="in">${host?`<button class="btn ok" onclick="startSheet()">Spiel starten (${total} Teams)</button>`:'<button class="btn sec" disabled>⏳ Warte auf den Host …</button>'}</div></div>`);
 }
@@ -2510,12 +2517,12 @@ function oSeasonRes(){
   app(`${phaseHead('Saison '+r.season+' · Abschluss','Meisterschaft','')}
 <div class="panel" style="text-align:center;border-color:${tc.col}88"><div style="font-size:54px">💍</div><div class="row" style="justify-content:center;margin:6px 0">${badge(r.champ,1)}</div><div class="h1">${r.champ===me?'Du bist Champion!':esc(C.name)+' ist Champion'}</div><div class="sub">${esc(tc.name)} · ${C.rings} Ring${C.rings>1?'e':''}</div><div class="s mut mt">Der Ringträger erhält +${CFG.RING_BONUS} Mio. Gehaltsspielraum für die Starting 5 der nächsten Saison.</div></div>
 <div class="panel"><div class="lbl">Endplatzierung & Pick-Belohnung</div><div class="col">${r.place.map((gi,k)=>`<div class="item"><div class="b" style="width:22px">${k+1}.</div>${badge(gi)}<div class="grow"><div class="b">${gname(gi)}</div><div class="s mut">${esc(tname(gi))}</div></div><span class="chip acc">+${r.rewards[k]} 🎱</span></div>`).join('')}</div></div>
-<div class="panel"><div class="lbl">Ringe · Ziel ${CFG.RINGS_TO_WIN}</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
+<div class="panel"><div class="lbl">Ringe · Ziel ${goalRings()>0?goalRings():'frei'}</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
 ${readyCta('Weiter → Offseason')}`);
 }
 function oChampion(){
   const r=ST.res,C=G_(r.champ),me=ME();
-  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">BYT World Champion</div><div class="h1" style="font-size:28px">${r.champ===me?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${badge(r.champ,1)}</div><div class="sub">${esc(tname(r.champ))} holt den ${CFG.RINGS_TO_WIN}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
+  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">BYT World Champion</div><div class="h1" style="font-size:28px">${r.champ===me?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${badge(r.champ,1)}</div><div class="sub">${esc(tname(r.champ))} holt den ${goalRings()}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
 <div class="panel"><div class="lbl">Ringe</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn" onclick="forgetRoom();leaveOnline()">🏠 Zum Hauptmenü</button></div></div>`);
 }
@@ -2917,6 +2924,23 @@ function appPanelHTML(){
   else body='<div class="s mut" style="line-height:1.6">Öffne im Browser das Menü (⋮) und wähle <b>App installieren</b> oder <b>Zum Startbildschirm hinzufügen</b>. TOP PICK startet danach ohne Browserleiste.</div>';
   return `<div class="panel"><div class="lbl">Als App nutzen</div>${body}</div>`;
 }
+
+/* ═════════════ SPIELZIEL (2 Ringe · eigenes Ziel · frei) ═════════════ */
+function goalRings(){return ST&&ST.goal!=null?ST.goal:CFG.RINGS_TO_WIN;}
+function goalText(g){g=g==null?goalRings():g;return g>0?`${g} Ring${g>1?'e':''}`:'Frei ohne Ende';}
+function goalOf(mode,n){return mode==='free'?0:(mode==='custom'?Math.max(1,Math.min(10,n||3)):2);}
+function goalPanelHTML(mode,num,onMode,onNum){
+  const g=goalOf(mode,num);
+  return `<div class="panel"><div class="lbl">Spielziel</div><div class="seg">
+<button class="segb ${mode==='two'?'on':''}" onclick="${onMode}('two')">2 Ringe</button><button class="segb ${mode==='custom'?'on':''}" onclick="${onMode}('custom')">Eigenes</button><button class="segb ${mode==='free'?'on':''}" onclick="${onMode}('free')">Frei</button></div>
+${mode==='custom'?`<div class="row between mt"><span class="s b">Ringe zum Sieg</span><div class="step"><button onclick="${onNum}(-1)">−</button><b>${g}</b><button onclick="${onNum}(1)">+</button></div></div>`:''}
+<div class="s mut" style="margin-top:8px">${g>0?`Wer zuerst ${goalText(g)} gewinnt, ist BYT World Champion.`:'Kein Ende – ihr spielt so viele Saisons, wie ihr wollt.'}</div></div>`;
+}
+function setGoalMode(m){UI.setup.goal=m;render();}
+function setGoalN(d){UI.setup.goalN=Math.max(1,Math.min(10,(UI.setup.goalN||3)+d));render();}
+function lobbyGoalMode(m){act('lobby_goal',{m:m,n:ST.net.lobby.goalN||3});}
+function lobbyGoalN(d){act('lobby_goal',{m:'custom',n:(ST.net.lobby.goalN||3)+d});}
+H.lobby_goal=(gi,d,pid)=>{if(ST.phase!=='lobby'||!isHostP(pid))return;const L=ST.net.lobby;L.goalMode=['two','custom','free'].indexOf(d.m)>-1?d.m:'two';L.goalN=Math.max(1,Math.min(10,d.n|0||3));};
 
 /* ═════════════ VIEWS & START ═════════════ */
 const VIEWS={start:vStart,dice:vDice,captain:vCaptain,fa:vFA,draft:vDraft,hub:vHub,lineup:vLineup,match:vMatch,events:vEvents,season:vSeason,champion:vChampion,trade:vTrade,release:vRelease};

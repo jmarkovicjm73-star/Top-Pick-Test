@@ -382,7 +382,8 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 .sp-name{margin-top:20px;font-size:42px;font-weight:900;letter-spacing:.08em;color:#fff}
 .sp-sub{font-size:11px;font-weight:800;letter-spacing:.3em;color:var(--sub);margin-top:4px}
 .sp-bar{width:160px;height:3px;border-radius:3px;background:rgba(255,255,255,.1);margin-top:28px;overflow:hidden}
-.sp-bar i{display:block;height:100%;width:40%;border-radius:3px;background:var(--acc);animation:spbar 1.1s ease-in-out infinite}
+.sp-lab{margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mut);min-height:14px}
+.sp-bar i{display:block;height:100%;width:40%;transition:width .25s;border-radius:3px;background:var(--acc);animation:spbar 1.1s ease-in-out infinite}
 @keyframes spbar{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
 
 .badge img{object-fit:cover}
@@ -403,7 +404,7 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 </style>
 </head>
 <body>
-<div id="splash"><div class="sp-in"><div class="sp-logo" id="sp-logo"></div><div class="sp-name">TOP PICK</div><div class="sp-sub">BASKETBALL MANAGER</div><div class="sp-bar"><i></i></div></div></div>
+<div id="splash"><div class="sp-in"><div class="sp-logo" id="sp-logo"></div><div class="sp-name">TOP PICK</div><div class="sp-sub">BASKETBALL MANAGER</div><div class="sp-bar"><i></i></div><div class="sp-lab" id="sp-lab"></div></div></div>
 <header id="hdr" style="display:none"></header>
 <main id="app"></main>
 <div id="arena" class="arena hidden"></div>
@@ -763,7 +764,7 @@ function vSettings(){
 ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 23</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 24</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -2685,17 +2686,39 @@ async function audDiscover(){
   audAddFiles(typeof MUSIC_FILES!=='undefined'?MUSIC_FILES:[]);
   if(/\.github\.io$/i.test(location.hostname)){
     const owner=location.hostname.split('.')[0],seg=location.pathname.split('/').filter(Boolean),repo=seg.length&&seg[0].indexOf('.')<0?seg[0]:location.hostname;
-    let list=null;try{const c=sessionStorage.getItem('tp_aud2');if(c)list=JSON.parse(c);}catch(e){}
-    if(!list){
-      list=[];const get=async p=>{try{const r=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${p}`);if(!r.ok)return [];const j=await r.json();return Array.isArray(j)?j:[];}catch(e){return [];}};
-      for(const it of await get('')){if(it.type==='file')list.push(it.path);else if(it.type==='dir'&&/^(music|musik|sounds?|sfx|audio|teams?|bilder|images?|img)$/i.test(it.name))(await get(it.path)).forEach(x=>{if(x.type==='file')list.push(x.path);});}
-      try{sessionStorage.setItem('tp_aud2',JSON.stringify(list));}catch(e){}
-    }
-    audAddFiles(list);
+    const fetchList=async()=>{const list=[];const get=async p=>{try{const r=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${p}`,{cache:'no-store'});if(!r.ok)return null;const j=await r.json();return Array.isArray(j)?j:null;}catch(e){return null;}};
+      const root=await get('');if(!root)return null;
+      for(const it of root){if(it.type==='file')list.push(it.path);else if(it.type==='dir'&&/^(music|musik|sounds?|sfx|audio|teams?|bilder|images?|img)$/i.test(it.name))((await get(it.path))||[]).forEach(x=>{if(x.type==='file')list.push(x.path);});}
+      try{localStorage.setItem('tp_aud3',JSON.stringify({at:Date.now(),list:list}));}catch(e){}return list;};
+    let cached=null;try{cached=JSON.parse(localStorage.getItem('tp_aud3')||'null');}catch(e){}
+    if(cached&&Array.isArray(cached.list)){
+      audAddFiles(cached.list);
+      if(Date.now()-cached.at>10*60*1000)fetchList().then(l=>{if(!l)return;const had=AUD.teamPh;audAddFiles(l);if(AUD.teamPh&&!UI.fxBusy&&!UI.m)render();audWarmAll();}).catch(()=>{});
+    }else{const l=await fetchList();if(l)audAddFiles(l);}
   }
   AUD.tracks.title.sort((a,b)=>a.file.localeCompare(b.file));AUD.ready=true;audSync();
   if(AUD.teamPh&&!UI.fxBusy&&!UI.m)render();
   if(UI.screen==='settings'&&!ST)render();
+}
+/* ── Dateien lokal speichern (Cache) ── */
+const TP_CACHE='tp-v1';
+function cacheWarm(src){
+  try{if(!src)return Promise.resolve();if(!window.caches)return fetch(src).then(()=>{}).catch(()=>{});
+    return caches.open(TP_CACHE).then(c=>c.match(src).then(h=>h?null:fetch(src).then(r=>{if(r&&r.ok)return c.put(src,r);}))).catch(()=>{});}
+  catch(e){return Promise.resolve();}
+}
+function imgDecode(src){return new Promise(r=>{const i=new Image();i.onload=i.onerror=()=>r();i.src=src;});}
+async function preloadAll(onProg){
+  try{await AUD.discoverP;}catch(e){}
+  const imgs=[LOGO_IMG].concat(TEAMS.map(t=>t.logo)).filter(Boolean),sfxs=Object.values(AUD.sfxFiles||{}),title=AUD.tracks.title[0]?[AUD.tracks.title[0].src]:[];
+  const jobs=imgs.map(s=>['Teamlogos',()=>cacheWarm(s).then(()=>imgDecode(s))]).concat(sfxs.map(s=>['Sounds',()=>cacheWarm(s)]),title.map(s=>['Musik',()=>cacheWarm(s)]));
+  let done=0;onProg(0,jobs.length,jobs.length?jobs[0][0]:'');
+  await Promise.all(jobs.map(j=>j[1]().catch(()=>{}).then(()=>{done++;onProg(done,jobs.length,j[0]);})));
+  setTimeout(audWarmAll,1500);
+}
+async function audWarmAll(){
+  if(AUD.warming)return;if(navigator.connection&&navigator.connection.saveData)return;AUD.warming=true;
+  try{for(const t of AUD.tracks.title.concat(AUD.tracks.menu))await cacheWarm(t.src);}finally{AUD.warming=false;}
 }
 function audUnlock(){
   try{
@@ -2804,7 +2827,7 @@ function audSettingsHTML(){
 ${AUD.cur?`<div class="item mt"><div style="font-size:20px">▶️</div><div class="grow"><div class="s mut">Läuft gerade</div><div class="b s">${esc(AUD.cur.title)} – ${esc(AUD.cur.artist)}</div></div>${AUD.mode&&AUD.mode!=='title'?'<button class="btn sec sm" onclick="audSkip()">⏭ Nächster</button>':''}</div>`:''}</div>
 <div class="panel"><div class="lbl">Credits · Musik</div><div class="col">${credits}</div></div>`;
 }
-audDiscover();
+AUD.discoverP=audDiscover();
 
 /* ═════════════ SPIELSTÄNDE (offline Slots & Online-Räume) ═════════════ */
 const SLOT_MAX=8;
@@ -2963,18 +2986,20 @@ if(window.MutationObserver){new MutationObserver(ms=>{ms.forEach(m=>{if(m.type==
 /* Logo als Wasserzeichen auf dem Spielfeld */
 (function(){const ball='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.7 5.6c3.1 3.4 3.1 9.4 0 12.8M18.3 5.6c-3.1 3.4-3.1 9.4 0 12.8"/></svg>';
   document.documentElement.style.setProperty('--logo-img',LOGO_IMG?'url("'+LOGO_IMG+'")':'url("data:image/svg+xml,'+encodeURIComponent(ball)+'")');})();
-/* Ladebildschirm */
-(function(){
+/* Ladebildschirm: lädt Logos, Sounds und den Start-Song vor */
+setTimeout(function(){
   const sp=document.getElementById('splash');if(!sp)return;
   const lg=document.getElementById('sp-logo');if(lg)lg.innerHTML=LOGO_IMG?`<img src="${LOGO_IMG}" alt="TOP PICK">`:icSVG('ball');
+  const bar=sp.querySelector('.sp-bar i'),lab=document.getElementById('sp-lab');
+  const prog=(d,n,l)=>{if(!n)return;if(bar){bar.style.animation='none';bar.style.transform='none';bar.style.width=Math.round(d/n*100)+'%';}if(lab)lab.textContent=d<n?`Lade ${l} … ${d}/${n}`:'Bereit';};
   const t0=performance.now(),fonts=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
-  Promise.race([fonts,new Promise(r=>setTimeout(r,2200))]).then(()=>{const wait=Math.max(0,1100-(performance.now()-t0));setTimeout(()=>{sp.classList.add('out');setTimeout(()=>sp.remove(),500);},wait);});
-})();
+  Promise.race([Promise.all([fonts,preloadAll(prog)]),new Promise(r=>setTimeout(r,9000))]).then(()=>{const wait=Math.max(0,1100-(performance.now()-t0));setTimeout(()=>{sp.classList.add('out');setTimeout(()=>sp.remove(),500);},wait);});
+},0);
 /* App-Modus (Zum Home-Bildschirm) */
 const APP={prompt:null,standalone:!!((window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone)};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();APP.prompt=e;if(!ST&&UI.screen==='settings')render();});
 window.addEventListener('appinstalled',()=>{APP.prompt=null;APP.standalone=true;toast('TOP PICK ist jetzt als App installiert');});
-if(!(window.claude&&window.claude.use)&&'serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+if(!(window.claude&&window.claude.use)&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 function appInstall(){const p=APP.prompt;if(!p)return;p.prompt();p.userChoice.then(()=>{APP.prompt=null;render();}).catch(()=>{});}
 function appPanelHTML(){
   const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);

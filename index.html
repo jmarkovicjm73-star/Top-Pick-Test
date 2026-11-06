@@ -401,6 +401,16 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 .hlph{width:16px;height:16px;border-radius:4px;object-fit:cover;flex-shrink:0}
 .champ-ph{width:180px;height:180px;border-radius:28px;overflow:hidden;margin:8px auto;box-shadow:0 0 0 4px #fbbf24,0 0 42px rgba(251,191,36,.35)}
 .champ-ph img{width:100%;height:100%;object-fit:cover;display:block}
+
+.card.art{border:0;background-size:100% 100%;background-position:center;background-repeat:no-repeat}
+.card.art .c-ovr{left:auto;right:4cqw;top:4cqw;font-size:11cqw;padding:1.3cqw 3cqw;border-radius:2.5cqw;background:rgba(0,0,0,.5);line-height:1}
+.card.art .c-sal{left:2.5cqw;top:4cqw;padding:1.6cqw .9cqw;border-radius:2cqw;background:rgba(0,0,0,.6);color:#a7f3d0}
+.card.art .c-stars{top:93cqw;font-size:9cqw}
+.card.art .c-pos b{font-size:13cqw}
+.card.art .c-pos small{font-size:5cqw;color:#fff}
+.card.mini.art .m-top{top:3cqw}
+.card.mini.art .ovr2{background:rgba(0,0,0,.55)}
+.card.mini.art .m-top span:first-child{background:rgba(0,0,0,.55);border-radius:3cqw;padding:0 3cqw}
 </style>
 </head>
 <body>
@@ -442,7 +452,12 @@ const FIREBASE_CONFIG={
       sfx_muenze, sfx_kugel, sfx_sieg, sfx_niederlage, sfx_sirene (.mp3) ersetzen die eingebauten Töne.
       Auf GitHub Pages werden die Dateien automatisch gefunden. Auf anderen Webseiten trage sie hier ein,
       z. B. const MUSIC_FILES=['ladescreen_Max Muster_Intro.mp3','menu_Max Muster_Song 1.mp3']; */
-const MUSIC_FILES=[]; // Teamfotos: team_KBF.jpg, team_BHP.jpg … (Ordner "teams" oder neben die index.html)
+const MUSIC_FILES=[];
+/* 4) KARTEN: Woher die Kartenwerte kommen.
+      – Link zu deiner veröffentlichten Google Tabelle (CSV), oder
+      – 'karten.csv', wenn die Datei direkt im Repository liegt (liegt dort eine karten.csv und ist hier nichts eingetragen, wird sie automatisch genommen).
+      Leer und keine karten.csv = eingebaute Karten. */
+const CARDS_CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vQthzRpYUcoiKzRzgqkyfCHMiBY39JhaQ3JGviBJaPM5Tbo367s-0R7tfpcAMV3Yg/pub?gid=145305524&single=true&output=csv'; // Teamfotos: team_KBF.jpg, team_BHP.jpg … (Ordner "teams" oder neben die index.html)
 /* ═════════════ KONFIGURATION (Regelwerk) ═════════════ */
 const CFG={
   CAP:200,            // Gehaltsgrenze für die Starting 5 (Mio.)
@@ -468,7 +483,8 @@ const TEAMS=[
   {name:'Atlanta Firebirds',sh:'ATL',col:'#fb7185',tx:'#2b0a0e',logo:null,tm:'#e68a95',tl:'#f4b1b9',rgb:'251,113,133'}
 ];
 const BOT_NAMES=['Julia','Max','Anna','Leon','Sofia'];
-const CARD_IMAGES={}; // Später echte Kartenbilder: {'L01':'karten/scary-reaper.png', ...}
+const CARD_IMAGES={}; // wird automatisch aus dem Ordner "karten" gefüllt (Dateiname = Spielername)
+const TIER_IMG={};    // Vorlagen je Stufe: legend.png, allstar.png, basic.png, rookie.png
 const DIE=['','⚀','⚁','⚂','⚃','⚄','⚅'];
 const EVENTS=[
   {id:'inj',w:15,icon:'🩹',name:'Verletzung',col:'#fb7185',desc:'Ein zufälliger Spieler fällt das nächste Spiel aus.'},
@@ -510,7 +526,7 @@ const LEGEND_DATA=[
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const DB=(function(){
   const db={};
-  LEGEND_DATA.forEach((r,i)=>{const id='L'+String(i+1).padStart(2,'0');db[id]={id:id,name:r[0],pos:r[1],tier:'Legend',sh:r[2],dr:r[3],pd:r[4],rp:r[5],sal:100,skill:r[6],skillText:r[7],bonus:r[8]};});
+  LEGEND_DATA.forEach((r,i)=>{const id='L'+String(i+1).padStart(2,'0');db[id]={id:id,name:r[0],pos:r[1],tier:'Legend',sh:r[2],dr:r[3],pd:r[4],rp:r[5],sal:100,skill:'',skillText:'',bonus:''};});
   // Platzhalter für Free Agents (All-Star/Basic) und Rookies – werden durch echte Karten ersetzt
   const rnd=mulberry32(7331),R=(a,b)=>a+Math.floor(rnd()*(b-a+1));
   const FIRST=['Marcus','Devin','Jalen','Tyrese','Andre','Malik','Darius','Isaiah','Caleb','Jordan','Elijah','Trey','Nico','Bram','Kofi','Rasheed','Theo','Mateo','Jamal','Owen','Xavier','Dante','Kenji','Aaron','Tobias','Rafael','Cedric','Lamar','Victor','Silas','Quentin','Emeka','Jonah','Felix','Omar','Reggie','Hugo','Damon','Kai','Luca'];
@@ -534,7 +550,101 @@ const DB=(function(){
   make('R','Rookie',40,['G','F','G','F','C']);
   return db;
 })();
-const IDS=p=>Object.keys(DB).filter(id=>id[0]===p);
+const IDS=p=>Object.keys(DB).filter(id=>id[0]===p&&!DB[id].hidden);
+/* ═════════════ KARTENTABELLE (Google Tabellen) ═════════════ */
+const SAL_FIX={Legend:100,Rookie:10}; // Legends und Rookies haben immer dasselbe Gehalt
+const CARDS={src:'builtin',n:{L:0,S:0,B:0,R:0},errors:[],at:0,ok:false};
+function csvParse(t){
+  const rows=[];let row=[],f='',q=false;t=String(t||'').replace(/^\uFEFF/,'');
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else if(c==='"')q=true;else if(c===','||c===';'||c==='\t'){row.push(f);f='';}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f='';}
+    else f+=c;}
+  if(f!==''||row.length){row.push(f);rows.push(row);}
+  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
+}
+function cardSlug(n){return String(n).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function cardsParse(text){
+  const rows=csvParse(text);if(rows.length<2)return{fatal:'Die Datei enthält keine Kartenzeilen.'};
+  const H=rows[0].map(h=>String(h).trim().toLowerCase()),col=(...n)=>H.findIndex(h=>n.indexOf(h)>-1);
+  const ci={name:col('kartenname')>-1?col('kartenname'):col('name','spielername','spieler'),tier:col('typ','stufe','tier'),pos:col('position','pos'),sh:col('wurf','sho','shooting'),dr:col('drive','drv','driving'),pd:col('per.def.','per. def.','per def','per','perimeter','perimeter def'),rp:col('zone def','zone def.','zone','rim protection'),sal:col('gehalt','salary','mio')};
+  if(ci.name<0||ci.tier<0||ci.pos<0||ci.sh<0||ci.dr<0||ci.pd<0||ci.rp<0)return{fatal:'Spaltenüberschriften fehlen: Typ, Position, Kartenname, Wurf, Drive, Zone DEF, Per.Def.'};
+  const TIERS={legend:'Legend',legends:'Legend',legende:'Legend',legenden:'Legend',stars:'All-Star',rookies:'Rookie','all-star':'All-Star',allstar:'All-Star','all star':'All-Star',star:'All-Star',basic:'Basic',starter:'Basic',rookie:'Rookie'},POSN={g:'G',guard:'G',f:'F',forward:'F',c:'C',center:'C'};
+  const PRE={Legend:'L','All-Star':'S',Basic:'B',Rookie:'R'},builtin={};LEGEND_DATA.forEach((r,i)=>{builtin[cardSlug(r[0])]='L'+String(i+1).padStart(2,'0');});
+  const seen=new Set(),errs=[],list=[],n={L:0,S:0,B:0,R:0};
+  rows.slice(1).forEach((r,k)=>{
+    const line=k+2,name=String(r[ci.name]||'').trim();if(!name)return;
+    const tier=TIERS[String(r[ci.tier]||'').trim().toLowerCase()],pos=POSN[String(r[ci.pos]||'').trim().toLowerCase()];
+    const v=x=>{const z=parseInt(String(r[x]||'').replace(/[^0-9]/g,''),10);return z>=1&&z<=99?z:null;};
+    const st={sh:v(ci.sh),dr:v(ci.dr),pd:v(ci.pd),rp:v(ci.rp)};
+    if(!tier){errs.push(`Zeile ${line} (${name}): Typ unbekannt`);return;}
+    if(!pos){errs.push(`Zeile ${line} (${name}): Position muss Guard, Forward oder Center sein`);return;}
+    if(Object.values(st).some(x=>x===null)){errs.push(`Zeile ${line} (${name}): Werte müssen Zahlen von 1 bis 99 sein`);return;}
+    const slug=cardSlug(name);if(seen.has(slug)){errs.push(`Zeile ${line} (${name}): Kartenname doppelt`);return;}seen.add(slug);
+    let sal=SAL_FIX[tier];if(sal==null){sal=ci.sal>-1?parseInt(String(r[ci.sal]||'').replace(/[^0-9]/g,''),10):NaN;if(!(sal>=1&&sal<=200))sal=null;}
+    list.push({id:(tier==='Legend'&&builtin[slug])||(PRE[tier]+'_'+slug),name:name,pos:pos,tier:tier,sh:st.sh,dr:st.dr,pd:st.pd,rp:st.rp,sal:sal});n[PRE[tier]]++;
+  });
+  return{list:list,errs:errs,n:n};
+}
+function cardsApply(text,src,at){
+  const P=cardsParse(text);if(P.fatal){CARDS.errors=[P.fatal];return false;}if(!P.list.length)return false;
+  const ids=new Set();
+  P.list.forEach(c=>{DB[c.id]=Object.assign(DB[c.id]||{},c,{skill:'',skillText:'',bonus:'',hidden:false});ids.add(c.id);});
+  Object.keys(DB).forEach(id=>{if(!ids.has(id))DB[id].hidden=true;});
+  // Gehalt automatisch nach Stärke, wenn keine Gehalt-Spalte gepflegt ist: All-Stars 20–38, Basics 5–15 Mio
+  [['All-Star',20,38],['Basic',5,15]].forEach(([t,lo,hi])=>{const L=[...ids].filter(id=>DB[id].tier===t);if(!L.length)return;const ov=L.map(id=>rating(null,id)),mn=Math.min(...ov),mx=Math.max(...ov);
+    L.forEach((id,k)=>{if(DB[id].sal==null){const f=mx>mn?(ov[k]-mn)/(mx-mn):.5;DB[id].sal=Math.round(lo+f*(hi-lo));}});});
+  CARDS.src=src||'sheet';CARDS.n=P.n;CARDS.errors=P.errs;CARDS.at=at||Date.now();CARDS.ok=true;
+  if(typeof cardImgRematch==='function')cardImgRematch();
+  return true;
+}
+function cardsCountBuiltin(){CARDS.n={L:IDS('L').length,S:IDS('S').length,B:IDS('B').length,R:IDS('R').length};}
+(function(){
+  cardsCountBuiltin();
+  try{const c=localStorage.getItem('tp_cards_csv');if(c)cardsApply(c,'sheet',+localStorage.getItem('tp_cards_at')||0);}catch(e){}
+})();
+function cardsSource(){return (typeof CARDS_CSV_URL!=='undefined'&&CARDS_CSV_URL)||(typeof AUD!=='undefined'&&AUD&&AUD.cardsCsv)||'';}
+async function cardsRefresh(){
+  const URL_=cardsSource();if(!URL_)return false;
+  try{
+    const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),7000);
+    const r=await fetch(URL_+(URL_.indexOf('?')>-1?'&':'?')+'t='+Date.now(),{cache:'no-store',signal:ctl.signal});clearTimeout(tm);
+    if(!r.ok)throw new Error('HTTP '+r.status);const t=await r.text();
+    if(/<html/i.test(t.slice(0,300)))throw new Error('Kein CSV – ist die Tabelle als CSV veröffentlicht?');
+    if(cardsApply(t,'sheet')){try{localStorage.setItem('tp_cards_csv',t);localStorage.setItem('tp_cards_at',String(Date.now()));}catch(e){}CARDS.fetchErr='';return true;}
+  }catch(e){CARDS.fetchErr=String(e&&e.message||e);}
+  return false;
+}
+function cardsNeed(n){return{L:n,FA:8*n+8,R:n};}
+function cardsCheck(n){
+  const c=CARDS.n,need=cardsNeed(n),fa=c.S+c.B,miss=[];
+  if(c.L<need.L)miss.push(`${need.L-c.L} Legend${need.L-c.L>1?'s':''}`);
+  if(fa<need.FA)miss.push(`${need.FA-fa} All-Stars oder Basics`);
+  if(c.R<need.R)miss.push(`${need.R-c.R} Rookie${need.R-c.R>1?'s':''}`);
+  return miss;
+}
+function cardsWarnHTML(n,what){
+  const miss=cardsCheck(n);if(!miss.length)return '';
+  return `<div class="panel" style="border-color:rgba(251,113,133,.5)"><div class="b" style="color:var(--bad)">Zu wenige Karten für ${what}</div><div class="s mut" style="margin-top:6px;line-height:1.55">Es fehlen noch ${miss.join(', ')}. Trag weitere Karten in deine Kartentabelle ein.</div></div>`;
+}
+function cardsPanelHTML(){
+  const c=CARDS,src=c.src==='sheet'?(/^https?:/i.test(cardsSource())?'Google Tabelle':'karten.csv'):'Eingebaute Karten';
+  return `<div class="panel"><div class="lbl">Karten <span>${src}</span></div>
+<div class="row wrap"><span class="chip">Legends ${c.n.L}</span><span class="chip">All-Stars ${c.n.S}</span><span class="chip">Basics ${c.n.B}</span><span class="chip">Rookies ${c.n.R}</span></div>
+${c.src!=='builtin'&&c.at?`<div class="s mut mt">Stand: ${fmtAt(c.at)}</div>`:''}
+${c.fetchErr?`<div class="s mt" style="color:var(--bad)">Tabelle konnte nicht geladen werden: ${esc(c.fetchErr)}</div>`:''}
+${c.errors.length?`<div class="s mt" style="color:var(--warn);line-height:1.5">${c.errors.length} Zeile${c.errors.length>1?'n':''} übersprungen:<br>${c.errors.slice(0,8).map(esc).join('<br>')}${c.errors.length>8?'<br>…':''}</div>`:''}
+${cardsSource()?'<button class="btn sec mt" onclick="cardsRefresh().then(()=>render())">Tabelle neu laden</button>':''}</div>`;
+}
+
+function cardsSnapshot(){if(CARDS.src==='builtin')return null;const o={};Object.keys(DB).forEach(id=>{const c=DB[id];if(!c.hidden)o[id]=[c.name,c.pos,c.tier,c.sh,c.dr,c.pd,c.rp,c.sal];});return o;}
+function cardsMerge(m,ow){if(!m)return;Object.keys(m).forEach(id=>{const a=m[id];if(!Array.isArray(a))return;if(DB[id]&&!ow)return;DB[id]=Object.assign(DB[id]||{hidden:true},{id:id,name:a[0],pos:a[1],tier:a[2],sh:a[3],dr:a[4],pd:a[5],rp:a[6],sal:a[7],skill:'',skillText:'',bonus:''});});}
+function cardImgRematch(){
+  if(typeof AUD==='undefined'||!AUD||!AUD.cardFiles)return;const nrm=x=>x.toLowerCase().replace(/[^a-z0-9]/g,''),idx={};
+  Object.keys(DB).forEach(k=>{idx[nrm(DB[k].name)]=idx[nrm(DB[k].name)]&&!DB[idx[nrm(DB[k].name)]].hidden?idx[nrm(DB[k].name)]:k;});
+  Object.keys(CARD_IMAGES).forEach(k=>delete CARD_IMAGES[k]);AUD.cardFiles.forEach(f=>{const id=idx[f[0]];if(id)CARD_IMAGES[id]=f[1];});
+}
 
 /* ═════════════ STATE ═════════════ */
 let ST=null;
@@ -587,21 +697,22 @@ ${inMatch?'<div class="s mut mt">🔒 Welche 5 Karten auf dem Feld liegen, bleib
 function teamCard(id,gi){cardSheet(id,gi,{actions:[{label:'← Zurück zum Team',cls:'sec',fn:()=>teamSheet(gi)}]});}
 function starStr(n){return `<span style="color:#fde047">${'★'.repeat(n)}</span><span style="color:rgba(255,255,255,.25)">${'★'.repeat(3-n)}</span>`;}
 function cardHTML(id,g,o){
-  o=o||{};const c=DB[id],fc=TIER_COL[c.tier],s=k=>sv(g,id,k),img=CARD_IMAGES[id],inj=g&&g.inj[id]>0;
+  o=o||{};const c=DB[id],fc=TIER_COL[c.tier],s=k=>sv(g,id,k),art=CARD_IMAGES[id],tpl=TIER_IMG[c.tier],bgi=art||tpl,inj=g&&g.inj[id]>0;
   const injb=inj?`<div class="injb">🩹${g.inj[id]}</div>`:'';
-  if(img)return `<div class="card img"><img src="${img}" alt="">${injb}</div>`;
-  const bg=`border-color:${fc};background:linear-gradient(180deg,${fc}45 0%,#16213f 40%,#0c1428 100%)`;
+  const bg=bgi?`background-image:url('${bgi}')`:`border-color:${fc};background:linear-gradient(180deg,${fc}45 0%,#16213f 40%,#0c1428 100%)`;
   const face=`<div class="c-face" style="background:${fc}26;color:${fc};border-color:${fc}88">${ini(c.name)}</div>`;
-  if(o.mini)return `<div class="card mini" style="${bg}"><div class="m-top"><span style="color:${fc}">${c.pos}</span><span class="ovr2">${rating(g,id)}</span></div>${face}<div class="m-name">${esc(c.name)}</div><div class="m-st"><span class="o">${s('sh')}</span><span class="d">${s('pd')}</span><span class="o">${s('dr')}</span><span class="d">${s('rp')}</span></div>${injb}</div>`;
+  if(o.mini)return `<div class="card mini${bgi?' art':''}" style="${bg}"><div class="m-top"><span style="color:${bgi?'#fff':fc}">${c.pos}</span><span class="ovr2">${rating(g,id)}</span></div>${art?'':face+`<div class="m-name">${esc(c.name)}</div>`}<div class="m-st"><span class="o">${s('sh')}</span><span class="d">${s('pd')}</span><span class="o">${s('dr')}</span><span class="d">${s('rp')}</span></div>${injb}</div>`;
   const stars=c.tier==='Legend'?3:(c.tier==='Rookie'?lvl(g,id):-1);
+  const starsH=stars>=0?`<div class="c-stars">${[0,1,2].map(k=>`<span class="${k<stars?'on':'off'}">★</span>`).join('')}</div>`:'';
+  const bot=`<div class="c-bot"><div class="c-col"><div class="pl o"><i>SHO</i><b>${s('sh')}</b></div><div class="pl o"><i>DRV</i><b>${s('dr')}</b></div></div>
+<div class="c-pos"><b style="color:${bgi?'#fff':fc}">${c.pos}</b><small>${POS_NAME[c.pos].toUpperCase()}</small></div>
+<div class="c-col"><div class="pl d"><i>PER</i><b>${s('pd')}</b></div><div class="pl d"><i>ZONE</i><b>${s('rp')}</b></div></div></div>`;
+  if(bgi)return `<div class="card art" style="${bg}"><div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)}</div>${art?'':face+`<div class="c-name">${esc(c.name)}</div>`}${starsH}${bot}${injb}</div>`;
   return `<div class="card" style="${bg}">
 <div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)}</div>
-<div class="c-skill" style="background:${fc}">${esc(c.skill||c.tier)}</div>
+<div class="c-skill" style="background:${fc}">${esc(c.tier)}</div>
 ${face}<div class="c-name">${esc(c.name)}</div>
-${stars>=0?`<div class="c-stars">${[0,1,2].map(k=>`<span class="${k<stars?'on':'off'}">★</span>`).join('')}</div>`:''}
-<div class="c-bot"><div class="c-col"><div class="pl o"><i>SHO</i><b>${s('sh')}</b></div><div class="pl o"><i>DRV</i><b>${s('dr')}</b></div></div>
-<div class="c-pos"><b style="color:${fc}">${c.pos}</b><small>${POS_NAME[c.pos].toUpperCase()}</small>${c.bonus?`<span class="c-bonus" style="background:${fc}">${esc(c.bonus)}</span>`:''}</div>
-<div class="c-col"><div class="pl d"><i>PER</i><b>${s('pd')}</b></div><div class="pl d"><i>ZONE</i><b>${s('rp')}</b></div></div></div>${injb}</div>`;
+${starsH}${bot}${injb}</div>`;
 }
 function pRow(gi,id,o){
   o=o||{};const g=G_(gi),c=DB[id],tc=TIER_COL[c.tier],inj=g.inj[id]>0;
@@ -752,7 +863,7 @@ ${rm?b('🌐','#7dd3fc',(rm.role==='host'?'Raum ':'Raum ')+esc(rm.code)+(rm.role
 ${b('🏀','#f7a81b','GM Career','Mehrere Saisons · offline oder online',"careerSheet()",sl||rm||UI.upRun?'':'main')}
 ${b('⚡','#f7a81b','Ultimate Pick',UI.upRun?`Run läuft · Stufe ${UI.upRun.up.stage} · ${fmtPts(UI.upRun.up.score)} Punkte`:`Rogue-Modus · Rekord ${UP_HIST.length?fmtPts(UP_HIST[0].score):'–'}`,"screen('up')",UI.upRun?'main':'')}
 ${b('💾','#fbbf24','Spielstände',`${SLOTS.length} offline · ${ROOMS.length} online`,"screen('saves')")}
-${b('📚','#60a5fa','Kartenalbum','Alle Karten mit Werten und Skills',"screen('album')")}
+${b('📚','#60a5fa','Kartenalbum','Alle Karten mit ihren Werten',"screen('album')")}
 ${b('📖','#94a3b8','Spielregeln','Kurzfassung des Regelwerks','rulesSheet()')}
 ${b('⚙️','#94a3b8','Einstellungen','Animationen, Ton, Credits',"screen('settings')")}`);
 }
@@ -763,8 +874,9 @@ function vSettings(){
 <div class="panel"><div class="lbl">Animationen</div><div class="opt">${o('anim','auto','Automatisch')}${o('anim','on','An')}${o('anim','off','Aus')}</div><div class="s mut" style="margin-top:8px">„Automatisch“ richtet sich nach „Bewegung reduzieren“ auf deinem Gerät.</div></div>
 ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
+${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 24</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 29</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -786,9 +898,10 @@ ${goalPanelHTML(s.goal||'two',s.goalN||3,'setGoalMode','setGoalN')}
 <div class="panel"><div class="lbl">Dein Name</div><input class="inp" maxlength="16" placeholder="Dein Name" value="${esc(s.name)}" oninput="UI.setup.name=this.value"></div>
 <div class="panel"><div class="lbl">Dein Team</div>${teamPicker(s.team,'setupTeamPick')}</div>
 <button class="btn sec mt" onclick="rulesSheet()">📖 Spielregeln</button>
-<div class="cta"><div class="in"><button class="btn" onclick="newGame()">Neues Spiel starten</button></div></div>`);
+${cardsWarnHTML(s.n,'dieses Spiel')}<div class="cta"><div class="in"><button class="btn" ${cardsCheck(s.n).length?'disabled':''} onclick="newGame()">Neues Spiel starten</button></div></div>`);
 }
 function newGame(){
+  if(cardsCheck(UI.setup.n).length){toast('Zu wenige Karten für dieses Spiel');return;}
   if(SLOTS.length>=SLOT_MAX){toast('Alle '+SLOT_MAX+' Spielstände sind belegt – lösche zuerst einen');screen('saves');return;}
   const s=UI.setup,n=s.n,name=(s.name||'').trim()||'Du';
   const others=shuffle([0,1,2,3,4,5].filter(i=>i!==s.team));
@@ -796,7 +909,7 @@ function newGame(){
     decks:{L:shuffle(IDS('L')),FA:shuffle(IDS('S').concat(IDS('B'))),R:shuffle(IDS('R'))},
     cap:null,fa:null,dr:null,sched:[],md:0,ev:null,seeds:null,res:null,finalLoser:null,midTrade:false,tr:null,goal:goalOf(s.goal||'two',s.goalN||3)};
   for(let i=0;i<n;i++)ST.gms.push({name:i===0?name:BOT_NAMES[i-1],team:i===0?s.team:others[i-1],roster:[],trade:0,picks:0,rings:0,ringHolder:false,inj:{},buffs:[],up:{},roll:0,w:0,l:0,pf:0,pa:0});
-  UI.saved=null;UI.slot=newSlotId();const nm=TEAMS[s.team].name,dup=SLOTS.filter(x=>x.name.indexOf(nm)===0).length;SLOTS.unshift(slotMeta(UI.slot,ST,dup?nm+' '+(dup+1):nm));slotsSave();go('dice');
+  ST.cards=cardsSnapshot();UI.saved=null;UI.slot=newSlotId();const nm=TEAMS[s.team].name,dup=SLOTS.filter(x=>x.name.indexOf(nm)===0).length;SLOTS.unshift(slotMeta(UI.slot,ST,dup?nm+' '+(dup+1):nm));slotsSave();go('dice');
 }
 
 /* ═════════════ PHASE 1: WÜRFELN ═════════════ */
@@ -834,7 +947,7 @@ function vCaptain(){
   app(`${preSteps(2)}${phaseHead('Phase 2 · Preseason','Kapitän ziehen','8 Legends liegen verdeckt. Reihum zieht jeder GM eine Karte – danach wird eine neue nachgelegt.')}
 ${done?'':turnBanner(gi,human?'Tippe eine verdeckte Karte':'zieht eine Karte …')}
 ${done?'':`<div class="grid4 mt">${c.pool.map((id,i)=>`<div class="cw ${human?'sel':''}" ${human?`onclick="takeCaptain(${i})"`:''}><div class="back lgd">🏀</div></div>`).join('')}</div>`}
-<div class="panel"><div class="lbl">Kapitäne</div><div class="col">${ST.order.map(i=>{const g=G_(i),cp=g.roster[0];return `<div class="item ${cp?'tap':''}" ${cp?`onclick="cardSheet('${cp}',${i})"`:''}>${badge(i)}<div class="grow"><div class="b">${gname(i)}</div><div class="s mut">${cp?`${esc(DB[cp].name)} · ${POS_NAME[DB[cp].pos]} · ${esc(DB[cp].skill)}`:'—'}</div></div>${cp?`<div class="b" style="color:${TIER_COL.Legend}">${rating(g,cp)}</div>`:''}</div>`;}).join('')}</div></div>
+<div class="panel"><div class="lbl">Kapitäne</div><div class="col">${ST.order.map(i=>{const g=G_(i),cp=g.roster[0];return `<div class="item ${cp?'tap':''}" ${cp?`onclick="cardSheet('${cp}',${i})"`:''}>${badge(i)}<div class="grow"><div class="b">${gname(i)}</div><div class="s mut">${cp?`${esc(DB[cp].name)} · ${POS_NAME[DB[cp].pos]}`:'—'}</div></div>${cp?`<div class="b" style="color:${TIER_COL.Legend}">${rating(g,cp)}</div>`:''}</div>`;}).join('')}</div></div>
 ${done?`<div class="cta"><div class="in"><button class="btn ok" onclick="enterFA('start')">Weiter → Free Agency</button></div></div>`:''}`);
   if(!done&&!human){const t=c.turn;later(()=>{if(ST&&ST.phase==='captain'&&ST.cap.turn===t)takeCaptain(rint(0,ST.cap.pool.length-1));},1000);}
 }
@@ -845,7 +958,7 @@ function takeCaptain(i){
   render();save();
   if(gi!==0){toast(`${g.name} zieht ${DB[id].name}`);return;}
   if(RM){cardSheet(id,0,{title:'Dein Kapitän'});return;}
-  showReveal({front:cardHTML(id,g),back:'<div class="back lgd">🏀</div>',from:r,glow:TIER_COL.Legend,kicker:'Dein Kapitän · Legend',title:esc(DB[id].name),sub:`${POS_NAME[DB[id].pos]} · OVR ${rating(g,id)} · Skill: ${esc(DB[id].skill)}`});
+  showReveal({front:cardHTML(id,g),back:'<div class="back lgd">🏀</div>',from:r,glow:TIER_COL.Legend,kicker:'Dein Kapitän · Legend',title:esc(DB[id].name),sub:`${POS_NAME[DB[id].pos]} · OVR ${rating(g,id)}`});
 }
 /* ── Aufdeck-Animation (Kapitän, Ereigniskarten) ── */
 function showReveal(o){
@@ -1831,6 +1944,7 @@ function guestListen(){
     if(!NET.on||NET.host||!d.exists)return;
     const v=d.data();if(!v||typeof v.s!=='string'||v.ver===NET.ver)return;
     let s;try{s=JSON.parse(v.s);}catch(e){return;}
+    if(s.cards)cardsMerge(s.cards,true);
     const first=NET.ver<0;NET.ver=v.ver;NET.skew=(v.at||Date.now())-Date.now();ST=s;if(first)UI.fxSeen=ST.fxs||0;
     pruneOut();refresh();if(first)autoClaim();
   },e=>toast(dbErrText(e))));
@@ -1880,7 +1994,7 @@ async function resumeHost(){
   if(s.net.hostUid&&NET.uid&&s.net.hostUid!==NET.uid){toast('Nur der ursprüngliche Host kann den Raum fortsetzen');return;}
   const old=s.net.host;
   (s.gms||[]).forEach(g=>{if(g.pid===old)g.pid=NET.pid;});(s.net.lobby.players||[]).forEach(p=>{if(p.pid===old)p.pid=NET.pid;});
-  s.net.host=NET.pid;s.fx=s.fx||[];
+  s.net.host=NET.pid;s.fx=s.fx||[];if(s.cards)cardsMerge(s.cards,false);
   netStop();NET.code=code;NET.on=true;NET.host=true;NET.uids={};ST=s;UI.fxSeen=s.fxs||0;UI.fxQ=[];UI.fxBusy=false;UI.lastPhase=null;
   hostListen();commitNet();roomTouch(code);toast('Raum '+code+' läuft wieder');
 }
@@ -1982,7 +2096,7 @@ const FX={
   reveal:(d,done)=>{
     const g=G_(d.gi);if(!g){done();return;}
     if(RM){cardSheet(d.id,d.gi,{title:'Dein Kapitän'});done();return;}
-    showReveal({front:cardHTML(d.id,g),back:'<div class="back lgd">🏀</div>',from:null,glow:TIER_COL.Legend,kicker:'Dein Kapitän · Legend',title:esc(DB[d.id].name),sub:`${POS_NAME[DB[d.id].pos]} · OVR ${rating(g,d.id)} · Skill: ${esc(DB[d.id].skill)}`,onDone:done});
+    showReveal({front:cardHTML(d.id,g),back:'<div class="back lgd">🏀</div>',from:null,glow:TIER_COL.Legend,kicker:'Dein Kapitän · Legend',title:esc(DB[d.id].name),sub:`${POS_NAME[DB[d.id].pos]} · OVR ${rating(g,d.id)}`,onDone:done});
   },
   lottery:(d,done)=>{
     if(RM){toast(`Pick ${d.n}: ${d.gi===ME()?'Du!':G_(d.gi).name}`);setTimeout(done,900);return;}
@@ -2009,7 +2123,7 @@ H.start=(gi,d,pid)=>{
   const used=L.players.map(p=>p.team),free=shuffle([0,1,2,3,4,5].filter(t=>used.indexOf(t)<0));
   ST.gms=L.players.map(p=>newGM(p.name,p.team,p.pid,p.uid,false));
   let b=0;while(ST.gms.length<n){ST.gms.push(newGM('🤖 '+BOT_NAMES[b],free.shift(),null,'',true));b++;}
-  ST.goal=goalOf(L.goalMode||'two',L.goalN||3);ST.phase='dice';
+  ST.goal=goalOf(L.goalMode||'two',L.goalN||3);ST.cards=cardsSnapshot();ST.phase='dice';
 };
 H.claim=(gi,d,pid)=>{if(ST.phase==='lobby'||ST.closed||ST.gms.some(g=>g.pid===pid))return;const k=d.gi|0,g=ST.gms[k];if(!g)return;
   if(g.bot){g.bot=false;g.name=String((NET.names&&NET.names[pid])||'Gast').slice(0,14);g.pid=pid;g.uid=NET.uids[pid]||'';fx('msg',g.name+' übernimmt '+TEAMS[g.team].name,othersOf(k));return;}
@@ -2142,7 +2256,7 @@ function oCaptain(){
   app(`${preSteps(2)}${phaseHead('Phase 2 · Preseason','Kapitän ziehen','8 Legends liegen verdeckt. Reihum zieht jeder GM eine Karte – danach wird eine neue nachgelegt.')}
 ${done?'':turnBanner(gi,gi===me?'Tippe eine verdeckte Karte':'zieht eine Karte …')}
 ${done?'':`<div class="grid4 mt">${c.pool.map((id,i)=>`<div class="cw ${mine?'sel':''}" ${mine?`onclick="act('cap',{i:${i}})"`:''}><div class="back lgd">🏀</div></div>`).join('')}</div>`}
-<div class="panel"><div class="lbl">Kapitäne</div><div class="col">${ST.order.map(i=>{const g=G_(i),cp=g.roster[0];return `<div class="item ${cp?'tap':''}" ${cp?`onclick="cardSheet('${cp}',${i})"`:''}>${badge(i)}<div class="grow"><div class="b">${gname(i)}</div><div class="s mut">${cp?`${esc(DB[cp].name)} · ${POS_NAME[DB[cp].pos]} · ${esc(DB[cp].skill)}`:'—'}</div></div>${cp?`<div class="b" style="color:${TIER_COL.Legend}">${rating(g,cp)}</div>`:''}</div>`;}).join('')}</div></div>
+<div class="panel"><div class="lbl">Kapitäne</div><div class="col">${ST.order.map(i=>{const g=G_(i),cp=g.roster[0];return `<div class="item ${cp?'tap':''}" ${cp?`onclick="cardSheet('${cp}',${i})"`:''}>${badge(i)}<div class="grow"><div class="b">${gname(i)}</div><div class="s mut">${cp?`${esc(DB[cp].name)} · ${POS_NAME[DB[cp].pos]}`:'—'}</div></div>${cp?`<div class="b" style="color:${TIER_COL.Legend}">${rating(g,cp)}</div>`:''}</div>`;}).join('')}</div></div>
 ${done?readyCta('Weiter → Free Agency'):''}`);
 }
 function oRoster(me){const my=G_(me);return `<div class="panel"><div class="lbl">Dein Kader <span>${my.roster.length}/${CFG.ROSTER_MAX}</span></div><div class="col">${sortRoster(my).map(id=>pRow(me,id,{click:`cardSheet('${id}',${me})`})).join('')||'<div class="s mut">Noch keine Spieler</div>'}</div></div>`;}
@@ -2633,6 +2747,7 @@ const OVIEWS={lobby:oLobby,dice:oDice,captain:oCaptain,fa:oFA,draft:oDraft,pre_d
 function oClosed(){app(`${phaseHead('Online','Spiel beendet','Der Host hat das Spiel in Raum '+esc(NET.code)+' beendet.')}<div class="cta"><div class="in"><button class="btn" onclick="forgetRoom();leaveOnline()">Zum Hauptmenü</button></div></div>`);}
 function forgetRoom(){if(UI.joined&&UI.joined.code===NET.code)UI.joined=null;if(UI.hosting===NET.code)UI.hosting=null;roomDel(NET.code);}
 function startSheet(){
+  {const _m=cardsCheck(Math.max(ST.net.lobby.n,ST.net.lobby.players.length));if(_m.length){toast('Zu wenige Karten – es fehlen '+_m.join(', '));return;}}
   const L=ST.net.lobby,total=Math.max(L.n,L.players.length),bots=total-L.players.length;
   if(!bots){act('start');return;}
   openSheet(`<div style="font-size:44px;text-align:center">🏀</div><div class="h2" style="text-align:center">Jetzt schon starten?</div><div class="sub mt" style="text-align:center">${L.players.length===1?'Bisher bist nur du im Raum.':'Im Raum sind '+L.players.length+' Spieler.'} ${bots} ${bots===1?'Platz übernimmt':'Plätze übernehmen'} KI-Manager.<br>Wer später kommt, kann mit dem Code noch ein KI-Team übernehmen.</div><div class="col mt"><button class="btn ok" data-act="y">Spiel starten</button><button class="btn sec" data-act="x">Weiter warten</button></div>`,{y:()=>{closeSheet();act('start');},x:closeSheet});
@@ -2676,6 +2791,14 @@ function audAddFiles(paths){
     if(typeof p!=='string')return;
     const tp=p.split('/').pop().match(/^team_([a-z]{3})\.(jpe?g|png|webp)$/i);
     if(tp){const t=TEAMS.find(x=>x.sh===tp[1].toUpperCase());if(t){t.logo=p.split('/').map(encodeURIComponent).join('/');AUD.teamPh=true;}return;}
+    const fn=p.split('/').pop();
+    if(/^karten\.csv$/i.test(fn)){AUD.cardsCsv=p.split('/').map(encodeURIComponent).join('/');return;}
+    if(/\.(png|jpe?g|webp)$/i.test(fn)&&(/^(karten|cards?)\//i.test(p)||/^karte_/i.test(fn))){
+      const nrm=x=>x.toLowerCase().replace(/[^a-z0-9]/g,''),key=nrm(fn.replace(/\.[a-z]+$/i,'').replace(/^karte_/i,'')),src=p.split('/').map(encodeURIComponent).join('/');
+      const tier={legend:'Legend',allstar:'All-Star',basic:'Basic',rookie:'Rookie'}[key];
+      if(tier){TIER_IMG[tier]=src;AUD.cardPh=true;return;}
+      AUD.cardFiles=AUD.cardFiles||[];if(!AUD.cardFiles.some(f=>f[1]===src))AUD.cardFiles.push([key,src]);cardImgRematch();AUD.cardPh=true;return;
+    }
     if(!/\.(mp3|m4a|ogg|wav|aac)$/i.test(p))return;
     const f=p.split('/').pop(),s=f.match(/^sfx_([a-z_]+)\./i);
     if(s){const k=SFX_FILE[s[1].toLowerCase()]||s[1].toLowerCase();AUD.sfxFiles[k]=p.split('/').map(encodeURIComponent).join('/');return;}
@@ -2688,7 +2811,7 @@ async function audDiscover(){
     const owner=location.hostname.split('.')[0],seg=location.pathname.split('/').filter(Boolean),repo=seg.length&&seg[0].indexOf('.')<0?seg[0]:location.hostname;
     const fetchList=async()=>{const list=[];const get=async p=>{try{const r=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${p}`,{cache:'no-store'});if(!r.ok)return null;const j=await r.json();return Array.isArray(j)?j:null;}catch(e){return null;}};
       const root=await get('');if(!root)return null;
-      for(const it of root){if(it.type==='file')list.push(it.path);else if(it.type==='dir'&&/^(music|musik|sounds?|sfx|audio|teams?|bilder|images?|img)$/i.test(it.name))((await get(it.path))||[]).forEach(x=>{if(x.type==='file')list.push(x.path);});}
+      for(const it of root){if(it.type==='file')list.push(it.path);else if(it.type==='dir'&&/^(music|musik|sounds?|sfx|audio|teams?|bilder|images?|img|karten|cards?)$/i.test(it.name))((await get(it.path))||[]).forEach(x=>{if(x.type==='file')list.push(x.path);});}
       try{localStorage.setItem('tp_aud3',JSON.stringify({at:Date.now(),list:list}));}catch(e){}return list;};
     let cached=null;try{cached=JSON.parse(localStorage.getItem('tp_aud3')||'null');}catch(e){}
     if(cached&&Array.isArray(cached.list)){
@@ -2697,7 +2820,7 @@ async function audDiscover(){
     }else{const l=await fetchList();if(l)audAddFiles(l);}
   }
   AUD.tracks.title.sort((a,b)=>a.file.localeCompare(b.file));AUD.ready=true;audSync();
-  if(AUD.teamPh&&!UI.fxBusy&&!UI.m)render();
+  if((AUD.teamPh||AUD.cardPh)&&!UI.fxBusy&&!UI.m)render();
   if(UI.screen==='settings'&&!ST)render();
 }
 /* ── Dateien lokal speichern (Cache) ── */
@@ -2710,8 +2833,9 @@ function cacheWarm(src){
 function imgDecode(src){return new Promise(r=>{const i=new Image();i.onload=i.onerror=()=>r();i.src=src;});}
 async function preloadAll(onProg){
   try{await AUD.discoverP;}catch(e){}
-  const imgs=[LOGO_IMG].concat(TEAMS.map(t=>t.logo)).filter(Boolean),sfxs=Object.values(AUD.sfxFiles||{}),title=AUD.tracks.title[0]?[AUD.tracks.title[0].src]:[];
-  const jobs=imgs.map(s=>['Teamlogos',()=>cacheWarm(s).then(()=>imgDecode(s))]).concat(sfxs.map(s=>['Sounds',()=>cacheWarm(s)]),title.map(s=>['Musik',()=>cacheWarm(s)]));
+  if(cardsSource()){if(onProg)onProg(0,1,'Karten');await cardsRefresh();}cardImgRematch();
+  const imgs=[LOGO_IMG].concat(TEAMS.map(t=>t.logo),Object.values(TIER_IMG),Object.values(CARD_IMAGES)).filter(Boolean),sfxs=Object.values(AUD.sfxFiles||{}),title=AUD.tracks.title[0]?[AUD.tracks.title[0].src]:[];
+  const jobs=imgs.map(s=>['Bilder',()=>cacheWarm(s).then(()=>imgDecode(s))]).concat(sfxs.map(s=>['Sounds',()=>cacheWarm(s)]),title.map(s=>['Musik',()=>cacheWarm(s)]));
   let done=0;onProg(0,jobs.length,jobs.length?jobs[0][0]:'');
   await Promise.all(jobs.map(j=>j[1]().catch(()=>{}).then(()=>{done++;onProg(done,jobs.length,j[0]);})));
   setTimeout(audWarmAll,1500);
@@ -2856,7 +2980,7 @@ async function slotsLoad(){
 async function loadSlot(id){
   const v=await kvGet(slotKey(id));let s=null;try{s=v?JSON.parse(v):null;}catch(e){}
   if(!s||!Array.isArray(s.gms)||!s.gms.length){toast('Dieser Spielstand ist leer oder beschädigt');slotDel(id);render();return;}
-  netStop();NET.on=false;ST=s;UI.slot=id;UI.saved=null;closeSheet();go(ST.phase==='match'?'hub':ST.phase);
+  netStop();NET.on=false;ST=s;if(ST.cards)cardsMerge(ST.cards,false);UI.slot=id;UI.saved=null;closeSheet();go(ST.phase==='match'?'hub':ST.phase);
 }
 function resume(){if(SLOTS[0])loadSlot(SLOTS[0].id);}
 function roomsSave(){kvSet('tp_rooms',JSON.stringify(ROOMS));}
@@ -3046,19 +3170,20 @@ function upCleanGroup(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g
 
 /* ── Start & Draft ── */
 function upStart(){
+  {const _m=cardsCheck(2);if(_m.length){toast('Zu wenige Karten – es fehlen '+_m.join(', '));return;}}
   const u=UI.up,name=(u.name||'').trim().slice(0,14)||'Du',grp=upCleanGroup(u.group);
   kvSet('tp_up_name',name);kvSet('tp_up_team',String(u.team|0));kvSet('tp_up_group',grp);
   ST={v:2,mode:'up',phase:'up_draft',season:1,gms:[upGM(name,u.team|0,false),upGM('Gegner',(u.team+1)%6,true)],order:[0,1],
     decks:{L:shuffle(IDS('L')),FA:shuffle(IDS('S').concat(IDS('B'))),R:shuffle(IDS('R'))},
     cap:null,fa:null,dr:null,sched:[],md:0,ev:null,seeds:null,res:null,finalLoser:null,midTrade:false,tr:null,goal:0,
     up:{stage:1,score:0,wins:0,games:[],group:grp,relLeft:3,offers:[],shop:[],reward:null,lastLu:[],boss:false,scout:[],last:null,id:newSlotId(),at:Date.now()}};
-  UI.slot=null;UI.m=null;UI.lu=null;
+  ST.cards=cardsSnapshot();UI.slot=null;UI.m=null;UI.lu=null;
   const cap=ST.decks.L.shift(),g=G_(0);g.roster.push(cap);
   upOffers();upSave();go('up_draft');
   if(RM){cardSheet(cap,0,{title:'Dein Kapitän'});return;}
-  showReveal({front:cardHTML(cap,g),back:'<div class="back lgd">🏀</div>',from:null,glow:TIER_COL.Legend,kicker:'Dein Kapitän · zufällig gezogen',title:esc(DB[cap].name),sub:`${POS_NAME[DB[cap].pos]} · OVR ${rating(g,cap)} · Skill: ${esc(DB[cap].skill)}`});
+  showReveal({front:cardHTML(cap,g),back:'<div class="back lgd">🏀</div>',from:null,glow:TIER_COL.Legend,kicker:'Dein Kapitän · zufällig gezogen',title:esc(DB[cap].name),sub:`${POS_NAME[DB[cap].pos]} · OVR ${rating(g,cap)}`});
 }
-function upResume(){const r=UI.upRun;if(!r)return;ST=JSON.parse(JSON.stringify(r));UI.slot=null;UI.m=null;UI.lu=null;go(ST.phase==='match'||ST.phase==='lineup'?'up_hub':ST.phase);}
+function upResume(){const r=UI.upRun;if(!r)return;ST=JSON.parse(JSON.stringify(r));if(ST.cards)cardsMerge(ST.cards,false);UI.slot=null;UI.m=null;UI.lu=null;go(ST.phase==='match'||ST.phase==='lineup'?'up_hub':ST.phase);}
 function upOffers(){
   const g=G_(0),left=9-g.roster.length,d=ST.decks.FA,out=[];
   const ok=id=>g.roster.indexOf(id)<0&&missingPos(g.roster.concat(id)).length<=left-1;
@@ -3288,7 +3413,7 @@ $('sheet').addEventListener('click',e=>{
 });
 render();
 if(LOGO_IMG){['icon','apple-touch-icon'].forEach(r=>{const l=document.createElement('link');l.rel=r;l.href=LOGO_IMG;document.head.appendChild(l);});}
-netInit();
+NET.initP=netInit();
 slotsLoad().then(()=>{if(!ST&&!NET.on)render();});
 upLoadMeta().then(()=>{if(!ST&&!NET.on)render();});
 </script>

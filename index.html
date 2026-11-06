@@ -876,7 +876,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 29</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 30</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -2826,14 +2826,46 @@ async function audDiscover(){
 /* ── Dateien lokal speichern (Cache) ── */
 const TP_CACHE='tp-v1';
 function cacheWarm(src){
-  try{if(!src)return Promise.resolve();if(!window.caches)return fetch(src).then(()=>{}).catch(()=>{});
+  try{if(!src||/^(blob|data):/.test(src))return Promise.resolve();if(!window.caches)return fetch(src).then(()=>{}).catch(()=>{});
     return caches.open(TP_CACHE).then(c=>c.match(src).then(h=>h?null:fetch(src).then(r=>{if(r&&r.ok)return c.put(src,r);}))).catch(()=>{});}
   catch(e){return Promise.resolve();}
 }
 function imgDecode(src){return new Promise(r=>{const i=new Image();i.onload=i.onerror=()=>r();i.src=src;});}
+
+/* ── Kartenbilder aus der Firebase-Datenbank (Knoten "cardimg"), lokal zwischengespeichert ── */
+const CIMG={urls:{},loaded:false};
+async function cardImgLocal(keys){
+  if(!window.caches||!keys||!keys.length)return 0;let n=0;
+  try{const c=await caches.open('tp-cardimg');for(const k of keys){const r=await c.match('__cardimg/'+k);if(r){CIMG.urls[k]=URL.createObjectURL(await r.blob());n++;}}}catch(e){}
+  return n;
+}
+function cardImgAssign(){
+  AUD.cardFiles=(AUD.cardFiles||[]).filter(f=>!/^blob:/.test(f[1]));
+  Object.keys(CIMG.urls).forEach(k=>{const t={legend:'Legend',allstar:'All-Star',basic:'Basic',rookie:'Rookie'}[k];if(t)TIER_IMG[t]=CIMG.urls[k];else AUD.cardFiles.push([k,CIMG.urls[k]]);});
+  cardImgRematch();if(Object.keys(CIMG.urls).length)AUD.cardPh=true;
+}
+async function cardImgLoad(onProg){
+  let localV=null,keys=[];try{localV=localStorage.getItem('tp_cardimg_v');keys=JSON.parse(localStorage.getItem('tp_cardimg_keys')||'[]');}catch(e){}
+  try{if(NET.initP)await Promise.race([NET.initP,new Promise(r=>setTimeout(r,5000))]);}catch(e){}
+  const online=NET.status==='ok'&&NET.mode==='firebase'&&!!window.firebase;let v=null;
+  if(online){try{v=(await firebase.database().ref('cardimg/_v').once('value')).val();}catch(e){v=null;}}
+  if(v!=null&&String(v)!==localV){
+    try{
+      if(onProg)onProg(0,1,'Kartenbilder');
+      const all=(await firebase.database().ref('cardimg').once('value')).val()||{},ks=Object.keys(all).filter(k=>k!=='_v'&&typeof all[k]==='string');
+      const c=window.caches?await caches.open('tp-cardimg'):null;if(c){for(const r of await c.keys())await c.delete(r);}
+      Object.values(CIMG.urls).forEach(u=>{try{URL.revokeObjectURL(u);}catch(e){}});CIMG.urls={};
+      let i=0;for(const k of ks){const b=await (await fetch(all[k])).blob();if(c)await c.put('__cardimg/'+k,new Response(b,{headers:{'Content-Type':b.type||'image/webp'}}));CIMG.urls[k]=URL.createObjectURL(b);i++;if(onProg)onProg(i,ks.length,'Kartenbilder');}
+      try{localStorage.setItem('tp_cardimg_v',String(v));localStorage.setItem('tp_cardimg_keys',JSON.stringify(ks));}catch(e){}
+    }catch(e){if(!Object.keys(CIMG.urls).length)await cardImgLocal(keys);}
+  }else if(!Object.keys(CIMG.urls).length)await cardImgLocal(keys);
+  CIMG.loaded=true;cardImgAssign();
+  if(!ST||(!UI.fxBusy&&!UI.m))render();
+}
 async function preloadAll(onProg){
   try{await AUD.discoverP;}catch(e){}
   if(cardsSource()){if(onProg)onProg(0,1,'Karten');await cardsRefresh();}cardImgRematch();
+  await cardImgLoad(onProg);
   const imgs=[LOGO_IMG].concat(TEAMS.map(t=>t.logo),Object.values(TIER_IMG),Object.values(CARD_IMAGES)).filter(Boolean),sfxs=Object.values(AUD.sfxFiles||{}),title=AUD.tracks.title[0]?[AUD.tracks.title[0].src]:[];
   const jobs=imgs.map(s=>['Bilder',()=>cacheWarm(s).then(()=>imgDecode(s))]).concat(sfxs.map(s=>['Sounds',()=>cacheWarm(s)]),title.map(s=>['Musik',()=>cacheWarm(s)]));
   let done=0;onProg(0,jobs.length,jobs.length?jobs[0][0]:'');

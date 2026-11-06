@@ -660,7 +660,7 @@ ${inSeason?'<button class="btn sec" data-act="t">📊 Tabelle</button>':''}
 }
 function rosterSheet(){const k=ME(),me=G_(k);openSheet(`<div class="h2">Kader <span class="s mut">${me.roster.length}/${CFG.ROSTER_MAX}</span></div><div class="col mt">${sortRoster(me).map(id=>pRow(k,id,{click:`cardSheet('${id}',${k})`})).join('')}</div><button class="btn sec mt" data-act="x">Schließen</button>`,{x:closeSheet});}
 function rulesSheet(){openSheet(`<div class="h2">Spielregeln (Kurzfassung)</div><div class="col mt s" style="line-height:1.6;color:var(--sub)">
-<div><b style="color:var(--fg)">Ziel:</b> ${goalRings()>0?`Wer zuerst ${goalText()} gewinnt, ist BYT World Champion.`:'Freies Spiel ohne Ende – sammelt so viele Ringe, wie ihr wollt.'} Das Ziel wird vor Spielbeginn festgelegt.</div>
+<div><b style="color:var(--fg)">Ziel:</b> ${goalRings()>0?`Wer zuerst ${goalText()} gewinnt, ist TOP PICK Champion.`:'Freies Spiel ohne Ende – sammelt so viele Ringe, wie ihr wollt.'} Das Ziel wird vor Spielbeginn festgelegt.</div>
 <div><b style="color:var(--fg)">Preseason:</b> Würfeln für die GM-Reihenfolge → Kapitän (Legend) verdeckt ziehen → Free Agency (8 offene Karten, reihum, bis jeder 8 Spieler hat) → Draft-Lotterie (1 Rookie).</div>
 <div><b style="color:var(--fg)">Spiel:</b> 5 Spieler (2 Guards, 2 Forwards, 1 Center), zusammen höchstens ${CFG.CAP} Mio. Das Heimteam greift zuerst mit einem Guard an. Der Angreifer wählt Shooting (gegen Perimeter Def) oder Driving (gegen Zone Def) und ein beliebiges Ziel. Höherer Wert = Punkt, Gleichstand = Verteidiger. Abwechselnd, Best of 5.</div>
 <div><b style="color:var(--fg)">Saison:</b> Hin- und Rückrunde, dann Playoffs. Nach jedem Spiel zieht jedes Team eine Ereigniskarte. Rookies steigen über Ereigniskarten bis zu 3 Sterne auf (+3 auf alle Werte pro Stern).</div>
@@ -1633,7 +1633,7 @@ function vSeason(){
 }
 function vChampion(){
   const r=ST.res,C=G_(r.champ);
-  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">BYT World Champion</div><div class="h1" style="font-size:28px">${r.champ===0?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${champPh(r.champ)}</div><div class="sub">${esc(tname(r.champ))} holt den ${goalRings()}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
+  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">TOP PICK Champion</div><div class="h1" style="font-size:28px">${r.champ===0?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${champPh(r.champ)}</div><div class="sub">${esc(tname(r.champ))} holt den ${goalRings()}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
 <div class="panel"><div class="lbl">Ringe</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn" onclick="resetGame()">Neues Spiel</button></div></div>`);
 }
@@ -2574,7 +2574,7 @@ ${readyCta('Weiter → Offseason')}`);
 }
 function oChampion(){
   const r=ST.res,C=G_(r.champ),me=ME();
-  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">BYT World Champion</div><div class="h1" style="font-size:28px">${r.champ===me?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${champPh(r.champ)}</div><div class="sub">${esc(tname(r.champ))} holt den ${goalRings()}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
+  app(`<div style="text-align:center;padding:28px 0 8px"><div style="font-size:64px">🏆</div><div class="kick mt">TOP PICK Champion</div><div class="h1" style="font-size:28px">${r.champ===me?'Du hast es geschafft!':esc(C.name)}</div><div class="row" style="justify-content:center;margin:12px 0">${champPh(r.champ)}</div><div class="sub">${esc(tname(r.champ))} holt den ${goalRings()}. Ring nach ${r.season} Saison${r.season>1?'s':''}.</div><div style="font-size:30px;margin-top:10px">${'💍'.repeat(C.rings)}</div></div>
 <div class="panel"><div class="lbl">Ringe</div><div class="col">${ST.order.map(i=>`<div class="row between"><span class="b s">${gname(i)}</span><span>${'💍'.repeat(G_(i).rings)||'<span class="mut s">—</span>'}</span></div>`).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn" onclick="forgetRoom();leaveOnline()">🏠 Zum Hauptmenü</button></div></div>`);
 }
@@ -2995,7 +2995,7 @@ function goalPanelHTML(mode,num,onMode,onNum){
   return `<div class="panel"><div class="lbl">Spielziel</div><div class="seg">
 <button class="segb ${mode==='two'?'on':''}" onclick="${onMode}('two')">2 Ringe</button><button class="segb ${mode==='custom'?'on':''}" onclick="${onMode}('custom')">Eigenes</button><button class="segb ${mode==='free'?'on':''}" onclick="${onMode}('free')">Frei</button></div>
 ${mode==='custom'?`<div class="row between mt"><span class="s b">Ringe zum Sieg</span><div class="step"><button onclick="${onNum}(-1)">−</button><b>${g}</b><button onclick="${onNum}(1)">+</button></div></div>`:''}
-<div class="s mut" style="margin-top:8px">${g>0?`Wer zuerst ${goalText(g)} gewinnt, ist BYT World Champion.`:'Kein Ende – ihr spielt so viele Saisons, wie ihr wollt.'}</div></div>`;
+<div class="s mut" style="margin-top:8px">${g>0?`Wer zuerst ${goalText(g)} gewinnt, ist TOP PICK Champion.`:'Kein Ende – ihr spielt so viele Saisons, wie ihr wollt.'}</div></div>`;
 }
 function setGoalMode(m){UI.setup.goal=m;render();}
 function setGoalN(d){UI.setup.goalN=Math.max(1,Math.min(10,(UI.setup.goalN||3)+d));render();}
@@ -3241,7 +3241,7 @@ ${r?'':'<div class="cta"><div class="in"><button class="btn" onclick="upStart()"
 }
 function careerSheet(){
   const b=(icon,t1,t2,fn)=>`<button class="mbtn" data-act="${fn}"><div class="mi">${icon}</div><div class="grow"><div class="mt1">${t1}</div><div class="mt2">${t2}</div></div><div class="mut b" style="font-size:20px">›</div></button>`;
-  openSheet(`<div class="h2">GM Career</div><div class="sub">Mehrere Saisons bis zum BYT World Champion.</div>${b('🤖','Offline','Gegen KI-Manager · 2–6 Teams','off')}${b('👥','Online','Mit Freunden · jeder auf seinem Gerät','on')}<button class="btn sec mt" data-act="x">Schließen</button>`,
+  openSheet(`<div class="h2">GM Career</div><div class="sub">Mehrere Saisons bis zum TOP PICK Champion.</div>${b('🤖','Offline','Gegen KI-Manager · 2–6 Teams','off')}${b('👥','Online','Mit Freunden · jeder auf seinem Gerät','on')}<button class="btn sec mt" data-act="x">Schließen</button>`,
     {off:()=>{closeSheet();screen('start');},on:()=>{closeSheet();screen('online');},x:closeSheet});
 }
 
@@ -3251,7 +3251,7 @@ function setupTeamPick(i){UI.setup.team=i;render();}
 function teamPicker(sel,fn,taken){
   const photos=TEAMS.some(t=>t.logo);
   if(!photos)return `<div class="teams">${TEAMS.map((t,i)=>{const tk=!!taken&&taken.indexOf(i)>-1&&sel!==i;return `<button class="teamb" ${tk?'disabled':''} style="${sel===i?`border-color:${t.col};background:${t.col}1f;`:''}${tk?'opacity:.35;':''}" onclick="${fn}(${i})">${badgeT(i)}<span>${t.name}</span></button>`;}).join('')}</div>`;
-  return `<div class="teams ph">${TEAMS.map((t,i)=>{const tk=!!taken&&taken.indexOf(i)>-1&&sel!==i;return `<button class="teamt${sel===i?' on':''}" ${tk?'disabled':''} style="--tcol:${t.col}" onclick="${fn}(${i})"><span class="tt-img">${t.logo?`<img src="${t.logo}" alt="">`:`<span class="tt-sh" style="background:${t.col};color:${t.tx}">${t.sh}</span>`}</span><span class="tt-name">${t.name}</span>${sel===i?'<span class="tt-ok">✓</span>':''}</button>`;}).join('')}</div>`;
+  return `<div class="teams ph">${TEAMS.map((t,i)=>{const tk=!!taken&&taken.indexOf(i)>-1&&sel!==i;return `<button class="teamt${sel===i?' on':''}" ${tk?'disabled':''} aria-label="${t.name}" style="--tcol:${t.col}" onclick="${fn}(${i})"><span class="tt-img">${t.logo?`<img src="${t.logo}" alt="">`:`<span class="tt-sh" style="background:${t.col};color:${t.tx}">${t.sh}</span>`}</span>${t.logo?'':`<span class="tt-name">${t.name}</span>`}${sel===i?'<span class="tt-ok">✓</span>':''}</button>`;}).join('')}</div>`;
 }
 
 /* ═════════════ VIEWS & START ═════════════ */

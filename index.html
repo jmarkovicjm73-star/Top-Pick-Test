@@ -411,6 +411,14 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 .card.mini.art .m-top{top:3cqw}
 .card.mini.art .ovr2{background:rgba(0,0,0,.55)}
 .card.mini.art .m-top span:first-child{background:rgba(0,0,0,.55);border-radius:3cqw;padding:0 3cqw}
+
+.czoom{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px calc(20px + env(safe-area-inset-bottom));background:rgba(3,6,15,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:zoom-out}
+.czoom.on{display:flex;animation:fadeIn .18s both}.czoom.out{animation:fadeOut .18s both}
+.cz-card{width:min(88vw,calc((100svh - 140px) / 1.4),460px);animation:czIn .28s cubic-bezier(.2,.9,.3,1.2) both;filter:drop-shadow(0 18px 40px rgba(0,0,0,.6))}
+.cz-bar{display:flex;align-items:center;gap:12px}
+@keyframes czIn{from{transform:scale(.6);opacity:0}}
+.cs-zoom{position:relative;cursor:zoom-in}
+.cs-zoom .zhint{display:block;text-align:center;font-size:10px;font-weight:700;color:var(--mut);margin-top:5px}
 </style>
 </head>
 <body>
@@ -728,7 +736,7 @@ function pRow(gi,id,o){
 function openSheet(html,h){UI.sh=h||{};const s=$('sheet');s.innerHTML=`<div class="sheet">${html}</div>`;s.classList.remove('hidden');}
 function closeSheet(){const s=$('sheet');s.classList.add('hidden');s.innerHTML='';UI.sh={};}
 function cardSheet(id,gi,o){
-  o=o||{};const g=(gi===null||gi===undefined)?null:G_(gi),c=DB[id],tc=TIER_COL[c.tier],h={x:closeSheet};
+  o=o||{};const g=(gi===null||gi===undefined)?null:G_(gi),c=DB[id],tc=TIER_COL[c.tier],h={x:closeSheet,z:()=>cardZoom(id,gi)};
   const tiles=['sh','pd','dr','rp'].map(k=>{
     const base=DB[id][k],v=sv(g,id,k),d=v-base,col=STAT_COL[k],act=o.attack&&(k==='sh'||k==='dr');
     if(act)h['atk-'+k]=()=>o.onAttack(k);
@@ -741,7 +749,7 @@ ${act?`<div class="s b" style="color:${col}">ANGREIFEN ▸</div>`:''}
   const inj=g&&g.inj[id]>0;
   const skill=c.skill?`<div class="panel" style="border-color:${tc}55"><div class="lbl"><span>⚡ Skill: ${esc(c.skill)}</span>${c.bonus?`<span class="chip" style="color:${tc};border-color:${tc}66">${esc(c.bonus)}</span>`:''}</div><div class="s" style="line-height:1.5">${esc(c.skillText)}</div></div>`:'';
   openSheet(`${o.title?`<div class="kick" style="text-align:center;margin-bottom:10px">${o.title}</div>`:''}
-<div class="row" style="gap:14px;align-items:center"><div style="width:128px;flex-shrink:0">${cardHTML(id,g)}</div>
+<div class="row" style="gap:14px;align-items:center"><div class="cs-zoom" data-act="z" style="width:128px;flex-shrink:0">${cardHTML(id,g)}<span class="zhint">Antippen zum Vergrößern</span></div>
 <div class="grow col" style="gap:4px"><div class="h2">${esc(c.name)}</div><div class="s mut">${POS_NAME[c.pos]} · ${c.tier}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''}</div>
 <div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip">OVR ${rating(g,id)}</span><span class="chip">💰 ${c.sal} Mio</span>${inj?`<span class="chip bad">🩹 ${g.inj[id]} Spiel${g.inj[id]>1?'e':''}</span>`:''}</div></div></div>
 <div class="tiles mt">${tiles}</div>${skill}
@@ -876,7 +884,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 30</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 31</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -885,7 +893,7 @@ function vAlbum(){
 <div class="mt">${phaseHead('Menü','Kartenalbum','Tippe eine Karte für Details.')}</div>
 <div class="tabs">${tabs.map(t=>`<button class="tab ${f===t[0]?'on':''}" onclick="UI.albumTab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
 <div class="row wrap mt"><span class="chip">${ids.length} Karten</span>${['G','F','C'].map(p=>`<span class="chip">${p} ${cnt(ids,p)}</span>`).join('')}</div>
-<div class="grid4 mt">${ids.map(id=>`<div class="cw" style="cursor:pointer" onclick="cardSheet('${id}',null)">${cardHTML(id,null)}</div>`).join('')}</div>`);
+<div class="grid4 mt">${ids.map(id=>`<div class="cw" style="cursor:pointer" onclick="cardZoom('${id}',null,true)">${cardHTML(id,null)}</div>`).join('')}</div>`);
 }
 const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum,saves:vSaves,up:vUp,upboard:vUpBoard};
 function vStart(){(SCREENS[UI.screen||'title']||vSetup)();}
@@ -3435,6 +3443,17 @@ function teamPicker(sel,fn,taken){
   if(!photos)return `<div class="teams">${TEAMS.map((t,i)=>{const tk=!!taken&&taken.indexOf(i)>-1&&sel!==i;return `<button class="teamb" ${tk?'disabled':''} style="${sel===i?`border-color:${t.col};background:${t.col}1f;`:''}${tk?'opacity:.35;':''}" onclick="${fn}(${i})">${badgeT(i)}<span>${t.name}</span></button>`;}).join('')}</div>`;
   return `<div class="teams ph">${TEAMS.map((t,i)=>{const tk=!!taken&&taken.indexOf(i)>-1&&sel!==i;return `<button class="teamt${sel===i?' on':''}" ${tk?'disabled':''} aria-label="${t.name}" style="--tcol:${t.col}" onclick="${fn}(${i})"><span class="tt-img">${t.logo?`<img src="${t.logo}" alt="">`:`<span class="tt-sh" style="background:${t.col};color:${t.tx}">${t.sh}</span>`}</span>${t.logo?'':`<span class="tt-name">${t.name}</span>`}${sel===i?'<span class="tt-ok">✓</span>':''}</button>`;}).join('')}</div>`;
 }
+
+
+/* ── Karte groß anzeigen ── */
+function cardZoom(id,gi,withDetails){
+  const g=(gi===null||gi===undefined)?null:G_(gi);let z=document.getElementById('czoom');
+  if(!z){z=document.createElement('div');z.id='czoom';z.className='czoom';document.body.appendChild(z);}
+  z.innerHTML=`<div class="cz-card">${cardHTML(id,g)}</div><div class="cz-bar">${withDetails?`<button class="btn sec sm" id="cz-det">Werte & Details</button>`:''}<span class="s mut">Tippen zum Schließen</span></div>`;
+  z.classList.remove('out');z.classList.add('on');
+  z.onclick=e=>{if(e.target.closest('#cz-det')){cardZoomClose();cardSheet(id,gi);return;}cardZoomClose();};
+}
+function cardZoomClose(){const z=document.getElementById('czoom');if(!z)return;z.classList.add('out');setTimeout(()=>{z.classList.remove('on','out');z.innerHTML='';},180);}
 
 /* ═════════════ VIEWS & START ═════════════ */
 const VIEWS={up_draft:vUpDraft,up_hub:vUpHub,up_reward:vUpReward,up_shop:vUpShop,up_over:vUpOver,start:vStart,dice:vDice,captain:vCaptain,fa:vFA,draft:vDraft,hub:vHub,lineup:vLineup,match:vMatch,events:vEvents,season:vSeason,champion:vChampion,trade:vTrade,release:vRelease};

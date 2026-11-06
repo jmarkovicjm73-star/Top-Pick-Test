@@ -414,7 +414,7 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 
 .czoom{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px calc(20px + env(safe-area-inset-bottom));background:rgba(3,6,15,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:zoom-out}
 .czoom.on{display:flex;animation:fadeIn .18s both}.czoom.out{animation:fadeOut .18s both}
-.cz-card{width:min(88vw,calc((100svh - 140px) / 1.4),460px);animation:czIn .28s cubic-bezier(.2,.9,.3,1.2) both;filter:drop-shadow(0 18px 40px rgba(0,0,0,.6))}
+.cz-card{width:min(76vw,calc((100svh - 160px) / 1.4),380px);animation:czIn .28s cubic-bezier(.2,.9,.3,1.2) both;filter:drop-shadow(0 18px 40px rgba(0,0,0,.6))}
 .cz-bar{display:flex;align-items:center;gap:12px}
 @keyframes czIn{from{transform:scale(.6);opacity:0}}
 .cs-zoom{position:relative;cursor:zoom-in}
@@ -884,7 +884,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 31</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 32</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -893,7 +893,7 @@ function vAlbum(){
 <div class="mt">${phaseHead('Menü','Kartenalbum','Tippe eine Karte für Details.')}</div>
 <div class="tabs">${tabs.map(t=>`<button class="tab ${f===t[0]?'on':''}" onclick="UI.albumTab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
 <div class="row wrap mt"><span class="chip">${ids.length} Karten</span>${['G','F','C'].map(p=>`<span class="chip">${p} ${cnt(ids,p)}</span>`).join('')}</div>
-<div class="grid4 mt">${ids.map(id=>`<div class="cw" style="cursor:pointer" onclick="cardZoom('${id}',null,true)">${cardHTML(id,null)}</div>`).join('')}</div>`);
+<div class="grid4 mt">${ids.map(id=>`<div class="cw" style="cursor:pointer" onclick="cardSheet('${id}',null)">${cardHTML(id,null)}</div>`).join('')}</div>`);
 }
 const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum,saves:vSaves,up:vUp,upboard:vUpBoard};
 function vStart(){(SCREENS[UI.screen||'title']||vSetup)();}

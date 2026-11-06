@@ -419,6 +419,10 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 @keyframes czIn{from{transform:scale(.6);opacity:0}}
 .cs-zoom{position:relative;cursor:zoom-in}
 .cs-zoom .zhint{display:block;text-align:center;font-size:10px;font-weight:700;color:var(--mut);margin-top:5px}
+
+:root{--splash-ov:radial-gradient(circle at 50% 44%,rgba(8,12,26,.72) 0,rgba(8,12,26,.35) 42%,rgba(8,12,26,.15) 70%),linear-gradient(180deg,rgba(8,12,26,.25) 0%,rgba(8,12,26,.45) 60%,rgba(8,12,26,.8) 100%)}
+body.has-bg #splash,body.has-bg .title-scr{background-image:var(--splash-ov),var(--splash-img);background-size:cover,cover;background-position:center,center;background-repeat:no-repeat}
+body.has-bg .title-scr:before{opacity:.45}
 </style>
 </head>
 <body>
@@ -443,6 +447,7 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
       Bleibt apiKey leer, läuft nur der Offline-Modus.
       Im veröffentlichten Claude-Artifact wird automatisch Claudes Speicher genutzt. */
 const LOGO_IMG='logo.png';
+const SPLASH_BG='ladescreen.webp'; // Hintergrund für Lade- und Startbildschirm (Hochformat, z. B. 1080×2400)
 const FIREBASE_CONFIG={
   apiKey:'AIzaSyA5eQb2VBuPzW5NByRoBa5LSACttPLQsCQ',
   authDomain:'top-pick---test.firebaseapp.com',
@@ -884,7 +889,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 32</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 33</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -2874,7 +2879,7 @@ async function preloadAll(onProg){
   try{await AUD.discoverP;}catch(e){}
   if(cardsSource()){if(onProg)onProg(0,1,'Karten');await cardsRefresh();}cardImgRematch();
   await cardImgLoad(onProg);
-  const imgs=[LOGO_IMG].concat(TEAMS.map(t=>t.logo),Object.values(TIER_IMG),Object.values(CARD_IMAGES)).filter(Boolean),sfxs=Object.values(AUD.sfxFiles||{}),title=AUD.tracks.title[0]?[AUD.tracks.title[0].src]:[];
+  const imgs=[LOGO_IMG,SPLASH_BG].concat(TEAMS.map(t=>t.logo),Object.values(TIER_IMG),Object.values(CARD_IMAGES)).filter(Boolean),sfxs=Object.values(AUD.sfxFiles||{}),title=AUD.tracks.title[0]?[AUD.tracks.title[0].src]:[];
   const jobs=imgs.map(s=>['Bilder',()=>cacheWarm(s).then(()=>imgDecode(s))]).concat(sfxs.map(s=>['Sounds',()=>cacheWarm(s)]),title.map(s=>['Musik',()=>cacheWarm(s)]));
   let done=0;onProg(0,jobs.length,jobs.length?jobs[0][0]:'');
   await Promise.all(jobs.map(j=>j[1]().catch(()=>{}).then(()=>{done++;onProg(done,jobs.length,j[0]);})));
@@ -3150,6 +3155,8 @@ if(window.MutationObserver){new MutationObserver(ms=>{ms.forEach(m=>{if(m.type==
 /* Logo als Wasserzeichen auf dem Spielfeld */
 (function(){const ball='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.7 5.6c3.1 3.4 3.1 9.4 0 12.8M18.3 5.6c-3.1 3.4-3.1 9.4 0 12.8"/></svg>';
   document.documentElement.style.setProperty('--logo-img',LOGO_IMG?'url("'+LOGO_IMG+'")':'url("data:image/svg+xml,'+encodeURIComponent(ball)+'")');})();
+/* Hintergrundbild für Lade- und Startbildschirm */
+if(SPLASH_BG){const im=new Image();im.onload=()=>{document.documentElement.style.setProperty('--splash-img','url("'+SPLASH_BG+'")');document.body.classList.add('has-bg');};im.src=SPLASH_BG;}
 /* Ladebildschirm: lädt Logos, Sounds und den Start-Song vor */
 setTimeout(function(){
   const sp=document.getElementById('splash');if(!sp)return;

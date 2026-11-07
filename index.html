@@ -103,7 +103,6 @@ button.chip{cursor:pointer;padding:7px 11px}
 .card.mini .m-st{position:absolute;left:4cqw;right:4cqw;bottom:4cqw;display:grid;grid-template-columns:1fr 1fr;gap:2.5cqw}
 .card.mini .m-st span{font-size:13cqw;font-weight:900;text-align:center;border-radius:3cqw;line-height:1.25}
 .card.mini .m-st .o{background:#8fa3c6}.card.mini .m-st .d{background:#b35a5a}
-.loanb{position:absolute;top:28%;right:4px;font-size:9px;font-weight:900;background:var(--sky);color:#06202e;border-radius:5px;padding:1px 4px;letter-spacing:.03em}
 .injb{position:absolute;top:28%;left:4px;font-size:9px;font-weight:900;background:var(--bad);color:#2b0710;border-radius:5px;padding:1px 4px}
 .back{width:100%;aspect-ratio:5/7;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:repeating-linear-gradient(45deg,#14203d 0 7px,#101a33 7px 14px);display:flex;align-items:center;justify-content:center;font-size:24px}
 .back.lgd{border-color:rgba(247,168,27,.6);background:repeating-linear-gradient(45deg,#3a2508 0 7px,#2b1b06 7px 14px)}
@@ -129,6 +128,11 @@ button.chip{cursor:pointer;padding:7px 11px}
 .lu-opt.on{border-color:var(--acc);background:rgba(var(--acc-rgb,255,154,60),.1)}
 .lu-oi{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);color:var(--acc);flex-shrink:0}
 .lu-oi .ic{width:18px;height:18px}
+.card.oop .m-st span,.card.oop .ovr2,.card.oop .m-top>span:first-child{color:var(--bad)!important}
+.card.oop .m-st span{background:rgba(251,113,133,.22)!important;box-shadow:inset 0 0 0 1px rgba(251,113,133,.6)}
+.card.oop .pl b,.card.oop .pd b,.card.oop .c-ovr,.card.oop .c-pos{color:var(--bad)!important}
+.cs .lab.oop{color:var(--bad)!important}
+.empty.tap{cursor:pointer}.empty.lu-tgt{border-color:var(--acc);color:var(--acc);animation:pa 1.6s ease-in-out infinite}
 .cw.glow{outline:2.5px solid var(--warn);outline-offset:1px;box-shadow:0 0 18px rgba(251,191,36,.5);animation:none}
 .cw.uw{opacity:.6;outline:2px solid var(--ok);outline-offset:1px}
 .cw.ul{opacity:.22}
@@ -500,7 +504,8 @@ const CFG={
   TRADE_TOL:20, CARD_VALUE:5,
   RINGS_TO_WIN:2,
   UP_STEP:3, UP_MAX:3, // Rookie: pro Stern +3 auf alle Werte, max. 3 Sterne
-  NEED:{G:2,F:2,C:1}
+  NEED:{G:2,F:2,C:1},
+  OOP:10              // Abzug auf alle Werte, wenn ein Spieler auf fremder Position spielt
 };
 const POS_NAME={G:'Guard',F:'Forward',C:'Center'};
 const STAT={sh:'Shooting',pd:'Perimeter Def',dr:'Driving',rp:'Zone Def'};
@@ -698,38 +703,17 @@ function later(fn,ms){clearTimeout(botT);botT=setTimeout(fn,ms);}
 
 function G_(i){return ST.gms[i];}
 function capOf(g){return CFG.CAP+(g.ringHolder?CFG.RING_BONUS:0)+(g.capX||0);}
-function lineupCost(ids){return ids.reduce((s,id)=>s+DB[id].sal,0);}
+function lineupCost(ids){return (ids||[]).reduce((s,id)=>s+(id?DB[id].sal:0),0);}
 function lvl(g,id){return g&&g.up[id]?g.up[id].n:0;}
 function sv(g,id,k){let v=DB[id][k];if(g){v+=lvl(g,id)*CFG.UP_STEP;g.buffs.forEach(b=>{if(b.id===id&&b.k===k)v+=b.v;});}return Math.min(99,v);}
+const SLOT_POS=['G','G','F','F','C'];
+function oop(i,id){return !!id&&i>=0&&i<5&&DB[id].pos!==SLOT_POS[i];}
+function esv(g,id,k,i){const v=sv(g,id,k);return oop(i,id)?Math.max(1,v-CFG.OOP):v;}
 function rating(g,id){const a=[sv(g,id,'sh'),sv(g,id,'dr')].sort((x,y)=>y-x),d=[sv(g,id,'pd'),sv(g,id,'rp')].sort((x,y)=>y-x);return Math.round(a[0]*.35+a[1]*.15+d[0]*.35+d[1]*.15);}
 function cnt(ids,p){return ids.filter(id=>DB[id].pos===p).length;}
 function missingPos(ids){const m=[];for(const p in CFG.NEED)for(let i=cnt(ids,p);i<CFG.NEED[p];i++)m.push(p);return m;}
 function healthy(g){return g.roster.filter(id=>!(g.inj[id]>0));}
 function isInj(g,id){return g.inj[id]>0;}
-/* Leihspieler: fehlt durch Verletzung eine Position, springt der günstigste passende Basic aus dem Free-Agency-Stapel ein */
-function avail(g){return healthy(g).concat(g.loans||[]);}
-function isLoan(g,id){return !!(g&&g.loans&&g.loans.indexOf(id)>-1);}
-function loanLeft(g,id){
-  if(!isLoan(g,id))return -1;const p=DB[id].pos,L=g.loans.filter(x=>DB[x].pos===p),j=L.indexOf(id),n=L.length;
-  const inj=g.roster.filter(x=>DB[x].pos===p&&g.inj[x]>0).map(x=>g.inj[x]).sort((a,b)=>a-b);
-  return inj[n-1-j]||0;
-}
-function loanPick(p){
-  const d=ST.decks.FA;let best=-1;
-  const better=(a,b)=>{const A=DB[a],B=DB[b],ab=A.tier==='Basic'?0:1,bb=B.tier==='Basic'?0:1;return ab!==bb?ab<bb:(A.sal!==B.sal?A.sal<B.sal:rating(null,a)<rating(null,b));};
-  d.forEach((id,k)=>{const c=DB[id];if(!c||c.pos!==p||c.tier==='Legend')return;if(best<0||better(id,d[best]))best=k;});
-  return best<0?null:d.splice(best,1)[0];
-}
-function syncLoans(g){
-  if(!ST||ST.mode==='up'||!g||!g.roster||!ST.decks)return;
-  g.loans=g.loans||[];const h=healthy(g);
-  for(const p in CFG.NEED){
-    const need=Math.max(0,CFG.NEED[p]-cnt(h,p));let L=g.loans.filter(x=>DB[x].pos===p);
-    while(L.length>need){const id=L.pop();g.loans=g.loans.filter(x=>x!==id);delete g.inj[id];delete g.up[id];g.buffs=g.buffs.filter(b=>b.id!==id);ST.decks.FA.push(id);}
-    while(L.length<need){const id=loanPick(p);if(!id)break;g.loans.push(id);L.push(id);}
-  }
-}
-function syncAllLoans(){if(ST&&ST.gms)ST.gms.forEach(syncLoans);}
 function sortRoster(g){const o={G:0,F:1,C:2};return g.roster.slice().sort((a,b)=>o[DB[a].pos]-o[DB[b].pos]||rating(g,b)-rating(g,a));}
 function combos(arr,k){const out=[],c=[];(function rec(s){if(c.length===k){out.push(c.slice());return;}for(let i=s;i<arr.length;i++){c.push(arr[i]);rec(i+1);c.pop();}})(0);return out;}
 
@@ -755,19 +739,19 @@ ${inMatch?'<div class="s mut mt">🔒 Welche 5 Karten auf dem Feld liegen, bleib
 function teamCard(id,gi){cardSheet(id,gi,{actions:[{label:'← Zurück zum Team',cls:'sec',fn:()=>teamSheet(gi)}]});}
 function starStr(n){return `<span style="color:#fde047">${'★'.repeat(n)}</span><span style="color:rgba(255,255,255,.25)">${'★'.repeat(3-n)}</span>`;}
 function cardHTML(id,g,o){
-  o=o||{};const c=DB[id],fc=TIER_COL[c.tier],s=k=>sv(g,id,k),art=CARD_IMAGES[id],tpl=TIER_IMG[c.tier],bgi=art||tpl,inj=g&&g.inj[id]>0;
-  const injb=(inj?`<div class="injb">🩹${g.inj[id]}</div>`:'')+(isLoan(g,id)?'<div class="loanb">LEIHE</div>':'');
+  o=o||{};const c=DB[id],fc=TIER_COL[c.tier],pen=o.oop?CFG.OOP:0,s=k=>Math.max(1,sv(g,id,k)-pen),art=CARD_IMAGES[id],tpl=TIER_IMG[c.tier],bgi=art||tpl,inj=g&&g.inj[id]>0;
+  const injb=inj?`<div class="injb">🩹${g.inj[id]}</div>`:'';
   const bg=bgi?`background-image:url('${bgi}')`:`border-color:${fc};background:linear-gradient(180deg,${fc}45 0%,#16213f 40%,#0c1428 100%)`;
   const face=`<div class="c-face" style="background:${fc}26;color:${fc};border-color:${fc}88">${ini(c.name)}</div>`;
-  if(o.mini)return `<div class="card mini${bgi?' art':''}" style="${bg}"><div class="m-top"><span style="color:${bgi?'#fff':fc}">${c.pos}</span><span class="ovr2">${rating(g,id)}</span></div>${art?'':face+`<div class="m-name">${esc(c.name)}</div>`}<div class="m-st"><span class="o">${s('sh')}</span><span class="d">${s('pd')}</span><span class="o">${s('dr')}</span><span class="d">${s('rp')}</span></div>${injb}</div>`;
+  if(o.mini)return `<div class="card mini${bgi?' art':''}${pen?' oop':''}" style="${bg}"><div class="m-top"><span style="color:${bgi?'#fff':fc}">${c.pos}</span><span class="ovr2">${rating(g,id)-pen}</span></div>${art?'':face+`<div class="m-name">${esc(c.name)}</div>`}<div class="m-st"><span class="o">${s('sh')}</span><span class="d">${s('pd')}</span><span class="o">${s('dr')}</span><span class="d">${s('rp')}</span></div>${injb}</div>`;
   const stars=c.tier==='Legend'?3:(c.tier==='Rookie'?lvl(g,id):-1);
   const starsH=stars>=0?`<div class="c-stars">${[0,1,2].map(k=>`<span class="${k<stars?'on':'off'}">★</span>`).join('')}</div>`:'';
   const bot=`<div class="c-bot"><div class="c-col"><div class="pl o"><i>SHO</i><b>${s('sh')}</b></div><div class="pl o"><i>DRV</i><b>${s('dr')}</b></div></div>
 <div class="c-pos"><b style="color:${bgi?'#fff':fc}">${c.pos}</b><small>${POS_NAME[c.pos].toUpperCase()}</small></div>
 <div class="c-col"><div class="pl d"><i>PER</i><b>${s('pd')}</b></div><div class="pl d"><i>ZONE</i><b>${s('rp')}</b></div></div></div>`;
-  if(bgi)return `<div class="card art" style="${bg}"><div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)}</div>${art?'':face+`<div class="c-name">${esc(c.name)}</div>`}${starsH}${bot}${injb}</div>`;
-  return `<div class="card" style="${bg}">
-<div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)}</div>
+  if(bgi)return `<div class="card art${pen?' oop':''}" style="${bg}"><div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)-pen}</div>${art?'':face+`<div class="c-name">${esc(c.name)}</div>`}${starsH}${bot}${injb}</div>`;
+  return `<div class="card${pen?' oop':''}" style="${bg}">
+<div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)-pen}</div>
 <div class="c-skill" style="background:${fc}">${esc(c.tier)}</div>
 ${face}<div class="c-name">${esc(c.name)}</div>
 ${starsH}${bot}${injb}</div>`;
@@ -776,7 +760,7 @@ function pRow(gi,id,o){
   o=o||{};const g=G_(gi),c=DB[id],tc=TIER_COL[c.tier],inj=g.inj[id]>0;
   return `<div class="item ${o.cls||''} ${o.click?'tap':''}" ${o.click?`onclick="${o.click}"`:''}>
 <div class="badge" style="background:${tc}22;color:${tc};border:1px solid ${tc}66">${c.pos}</div>
-<div class="grow"><div class="b" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''} ${inj?`<span class="chip bad" style="padding:1px 6px">🩹${g.inj[id]}</span>`:''}${isLoan(g,id)?`<span class="chip" style="padding:1px 6px;color:var(--sky);border-color:rgba(125,211,252,.45)">Leihe${loanLeft(g,id)>0?' · noch '+loanLeft(g,id):''}</span>`:''}</div>
+<div class="grow"><div class="b" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''} ${inj?`<span class="chip bad" style="padding:1px 6px">🩹${g.inj[id]}</span>`:''}</div>
 <div class="s mut">${c.tier}${c.skill?' · '+esc(c.skill):''} · ${c.sal} Mio</div>
 <div class="s mut">SHO ${sv(g,id,'sh')} · DRV ${sv(g,id,'dr')} · PER ${sv(g,id,'pd')} · ZONE ${sv(g,id,'rp')}</div></div>
 <div class="b" style="font-size:16px;color:${tc}">${rating(g,id)}</div></div>`;
@@ -808,20 +792,20 @@ function sheetNav(dir){
 function cardSheet(id,gi,o){
   o=o||{};const g=(gi===null||gi===undefined)?null:G_(gi),c=DB[id],tc=TIER_COL[c.tier],h={x:closeSheet,z:()=>cardZoom(id,gi),_nav:o.nav||null};
   const tiles=['sh','pd','dr','rp'].map(k=>{
-    const base=DB[id][k],v=sv(g,id,k),d=v-base,col=STAT_COL[k],act=o.attack&&(k==='sh'||k==='dr');
+    const base=DB[id][k],v=Math.max(1,sv(g,id,k)-(o.oop?CFG.OOP:0)),d=v-base,col=STAT_COL[k],act=o.attack&&(k==='sh'||k==='dr');
     if(act)h['atk-'+k]=()=>o.onAttack(k);
     return `<div class="tile ${act?'act':''}" ${act?`data-act="atk-${k}" style="border-color:${col};background:${col}14"`:''}>
 ${act?`<div class="s b" style="color:${col}">ANGREIFEN ▸</div>`:''}
-<div class="row between"><span class="n">${STAT_ICON[k]} ${STAT[k]}</span>${d?`<span class="chip ok" style="padding:1px 6px">+${d}</span>`:''}</div>
+<div class="row between"><span class="n">${STAT_ICON[k]} ${STAT[k]}</span>${d>0?`<span class="chip ok" style="padding:1px 6px">+${d}</span>`:(d<0?`<span class="chip bad" style="padding:1px 6px">${d}</span>`:'')}</div>
 <div class="v" style="color:${col}">${v}</div><div class="bar"><i style="width:${v}%;background:${col}"></i></div></div>`;
   }).join('');
   const acts=(o.actions||[]).map((a,k)=>{h['a'+k]=a.fn;return `<button class="btn ${a.cls||''}" data-act="a${k}" ${a.disabled?'disabled':''}>${a.label}</button>`;}).join('');
   const inj=g&&g.inj[id]>0;
   const skill=c.skill?`<div class="panel" style="border-color:${tc}55"><div class="lbl"><span>⚡ Skill: ${esc(c.skill)}</span>${c.bonus?`<span class="chip" style="color:${tc};border-color:${tc}66">${esc(c.bonus)}</span>`:''}</div><div class="s" style="line-height:1.5">${esc(c.skillText)}</div></div>`:'';
   openSheet(`${o.title?`<div class="kick" style="text-align:center;margin-bottom:10px">${o.title}</div>`:''}
-<div class="row" style="gap:14px;align-items:center"><div class="cs-zoom" data-act="z" style="width:128px;flex-shrink:0">${cardHTML(id,g)}<span class="zhint">Antippen zum Vergrößern</span></div>
+<div class="row" style="gap:14px;align-items:center"><div class="cs-zoom" data-act="z" style="width:128px;flex-shrink:0">${cardHTML(id,g,{oop:o.oop})}<span class="zhint">Antippen zum Vergrößern</span></div>
 <div class="grow col" style="gap:4px"><div class="h2">${esc(c.name)}</div><div class="s mut">${POS_NAME[c.pos]} · ${c.tier}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''}</div>
-<div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip">OVR ${rating(g,id)}</span><span class="chip">💰 ${c.sal} Mio</span>${inj?`<span class="chip bad">🩹 ${g.inj[id]} Spiel${g.inj[id]>1?'e':''}</span>`:''}${isLoan(g,id)?`<span class="chip" style="color:var(--sky);border-color:rgba(125,211,252,.45)">Leihe${loanLeft(g,id)>0?' · noch '+loanLeft(g,id)+' Spiel'+(loanLeft(g,id)>1?'e':''):''}</span>`:''}</div></div></div>
+<div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip${o.oop?' bad':''}">OVR ${rating(g,id)-(o.oop?CFG.OOP:0)}</span>${o.oop?`<span class="chip bad">Fremde Position · −${CFG.OOP}</span>`:''}<span class="chip">💰 ${c.sal} Mio</span>${inj?`<span class="chip bad">🩹 ${g.inj[id]} Spiel${g.inj[id]>1?'e':''}</span>`:''}</div></div></div>
 <div class="tiles mt">${tiles}</div>${skill}
 <div class="s mut mt" style="text-align:center">${o.note||'Shooting gegen Perimeter Def · Driving gegen Zone Def · Gleichstand gewinnt der Verteidiger'}</div>
 <div class="col mt">${acts}<button class="btn sec" data-act="x">Schließen</button></div>`,h);
@@ -852,7 +836,7 @@ function rosterSheet(){const k=ME(),me=G_(k);openSheet(`<div class="h2">Kader <s
 function rulesSheet(){openSheet(`<div class="h2">Spielregeln (Kurzfassung)</div><div class="col mt s" style="line-height:1.6;color:var(--sub)">
 <div><b style="color:var(--fg)">Ziel:</b> ${goalRings()>0?`Wer zuerst ${goalText()} gewinnt, ist TOP PICK Champion.`:'Freies Spiel ohne Ende – sammelt so viele Ringe, wie ihr wollt.'} Das Ziel wird vor Spielbeginn festgelegt.</div>
 <div><b style="color:var(--fg)">Preseason:</b> Würfeln für die GM-Reihenfolge → Kapitän (Legend) verdeckt ziehen → Free Agency (8 offene Karten, reihum, bis jeder 8 Spieler hat) → Draft-Lotterie (1 Rookie).</div>
-<div><b style="color:var(--fg)">Spiel:</b> 5 Spieler (2 Guards, 2 Forwards, 1 Center), zusammen höchstens ${CFG.CAP} Mio. Das Heimteam greift zuerst mit einem Guard an. Der Angreifer wählt Shooting (gegen Perimeter Def) oder Driving (gegen Zone Def) und ein beliebiges Ziel. Höherer Wert = Punkt, Gleichstand = Verteidiger. Abwechselnd, Best of 5.</div>
+<div><b style="color:var(--fg)">Spiel:</b> 5 Spieler (2 Guards, 2 Forwards, 1 Center), zusammen höchstens ${CFG.CAP} Mio. Ein Spieler auf fremder Position verliert ${CFG.OOP} Punkte auf alle Werte. Das Heimteam greift zuerst mit einem Guard an. Der Angreifer wählt Shooting (gegen Perimeter Def) oder Driving (gegen Zone Def) und ein beliebiges Ziel. Höherer Wert = Punkt, Gleichstand = Verteidiger. Abwechselnd, Best of 5.</div>
 <div><b style="color:var(--fg)">Saison:</b> Hin- und Rückrunde, dann Playoffs. Nach jedem Spiel zieht jedes Team eine Ereigniskarte. Rookies steigen über Ereigniskarten bis zu 3 Sterne auf (+3 auf alle Werte pro Stern).</div>
 <div><b style="color:var(--fg)">Trades:</b> Wertausgleich ±${CFG.TRADE_TOL} Mio., Kader ${CFG.ROSTER_MIN}–${CFG.ROSTER_MAX}, alle Positionen besetzt.</div>
 <div><b style="color:var(--fg)">Offseason:</b> Tradetime → einen Spieler gegen Trade-Karte entlassen → Free Agency mit Trade-Karten → Draft mit Pick-Karten als Kugeln.</div>
@@ -954,7 +938,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 36</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 37</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -1369,7 +1353,7 @@ function roundRobin(list){
   return rounds;
 }
 function startSeason(){
-  ST.gms.forEach(g=>{g.w=0;g.l=0;g.pf=0;g.pa=0;g.inj={};g.buffs=[];});syncAllLoans();
+  ST.gms.forEach(g=>{g.w=0;g.l=0;g.pf=0;g.pa=0;g.inj={};g.buffs=[];});
   const rr=roundRobin(ST.order);ST.sched=[];
   rr.forEach((gs,k)=>ST.sched.push({stage:'H',label:`Hinrunde · Spieltag ${k+1}/${rr.length}`,games:gs.map(p=>({h:p[0],a:p[1],hs:null,as:null}))}));
   rr.forEach((gs,k)=>ST.sched.push({stage:'R',label:`Rückrunde · Spieltag ${k+1}/${rr.length}`,games:gs.map(p=>({h:p[1],a:p[0],hs:null,as:null}))}));
@@ -1389,9 +1373,9 @@ function standTable(){
 <div class="s mut" style="margin-top:10px">💍 Ringe: ${ST.order.map(i=>`${gname(i)} ${G_(i).rings}`).join(' · ')}</div>`;
 }
 function injuryNote(g){
-  const ids=Object.keys(g.inj).filter(id=>g.inj[id]>0&&!isLoan(g,id)),ln=g.loans||[];
-  if(!ids.length&&!g.buffs.length&&!ln.length)return '';
-  return `<div class="panel"><div class="lbl">Status</div><div class="col">${ids.map(id=>`<div class="row s"><span class="chip bad">🩹 ${g.inj[id]}</span><span>${esc(DB[id].name)} fällt aus</span></div>`).join('')}${ln.map(id=>`<div class="row s"><span class="chip" style="color:var(--sky);border-color:rgba(125,211,252,.45)">Leihe</span><span>${esc(DB[id].name)} springt als ${POS_NAME[DB[id].pos]} ein${loanLeft(g,id)>0?' · noch '+loanLeft(g,id)+' Spiel'+(loanLeft(g,id)>1?'e':''):''}</span></div>`).join('')}${g.buffs.map(b=>`<div class="row s"><span class="chip ok">+${b.v}</span><span>${esc(DB[b.id].name)}: ${STAT[b.k]} (nächstes Spiel)</span></div>`).join('')}</div></div>`;
+  const ids=Object.keys(g.inj).filter(id=>g.inj[id]>0);
+  if(!ids.length&&!g.buffs.length)return '';
+  return `<div class="panel"><div class="lbl">Status</div><div class="col">${ids.map(id=>`<div class="row s"><span class="chip bad">🩹 ${g.inj[id]}</span><span>${esc(DB[id].name)} fällt aus</span></div>`).join('')}${g.buffs.map(b=>`<div class="row s"><span class="chip ok">+${b.v}</span><span>${esc(DB[b.id].name)}: ${STAT[b.k]} (nächstes Spiel)</span></div>`).join('')}</div></div>`;
 }
 function vHub(){
   const md=ST.sched[ST.md];if(!md){advance();return;}
@@ -1413,112 +1397,123 @@ function vHub(){
 }
 
 /* ═════════════ AUFSTELLUNG (Gehaltsgrenze gilt für die Starting 5) ═════════════ */
-function lineupReq(g){const h=avail(g),base=h.length>=5?h:g.roster.concat(g.loans||[]),r={};for(const p in CFG.NEED)r[p]=Math.min(CFG.NEED[p],cnt(base,p));return r;}
+function luIds(lu){return (lu||[]).filter(Boolean);}
+function slotify(ids){
+  const out=[null,null,null,null,null],rest=luIds(ids);
+  SLOT_POS.forEach((p,i)=>{const k=rest.findIndex(id=>DB[id].pos===p);if(k>-1)out[i]=rest.splice(k,1)[0];});
+  for(let i=0;i<5;i++)if(out[i]===null&&rest.length)out[i]=rest.shift();
+  return out;
+}
+/* Aufstellungen sind 5 feste Plätze [G,G,F,F,C]; ältere Listen werden nach Position einsortiert */
+function arrange(ids){if(ids&&ids.length===5)return ids.slice();return slotify(ids||[]);}
+function oopCount(lu){return lu.reduce((a,id,i)=>a+(oop(i,id)?1:0),0);}
 function luScore(g,id,st){
   if(st==='off'){const a=[sv(g,id,'sh'),sv(g,id,'dr')].sort((x,y)=>y-x);return a[0]*.7+a[1]*.3+rating(g,id)*.01;}
   if(st==='def')return (sv(g,id,'pd')+sv(g,id,'rp'))/2+rating(g,id)*.01;
   return rating(g,id);
 }
-function autoLineup(g,st){
-  const h=avail(g),pool=h.length>=5?h:g.roster.concat(g.loans||[]),req=lineupReq(g),cap=capOf(g);
-  let best=null,bs=-1,cheap=null,cs=1e9;
+function luPool(g){const h=healthy(g);return h.length>=5?h:g.roster.slice();}
+function autoLineup(g,st,keep){
+  const pool=luPool(g),cap=capOf(g),kp=(keep||[]).filter(id=>pool.indexOf(id)>-1);
+  let best=null,bs=-1e9,cheap=null,cs=1e9;
   combos(pool,5).forEach(c=>{
-    if(!Object.keys(req).every(p=>cnt(c,p)>=req[p]))return;
+    if(!kp.every(id=>c.indexOf(id)>-1))return;
     const cost=lineupCost(c);if(cost<cs){cs=cost;cheap=c;}
     if(cost>cap)return;
-    const s=c.reduce((a,id)=>a+luScore(g,id,st),0);if(s>bs){bs=s;best=c;}
+    const lu=slotify(c),sc=c.reduce((a,id)=>a+luScore(g,id,st),0)-CFG.OOP*oopCount(lu);
+    if(sc>bs){bs=sc;best=lu;}
   });
-  return best||cheap||pool.slice(0,5);
-}
-function arrange(ids){
-  const slots=['G','G','F','F','C'],out=[null,null,null,null,null],rest=ids.slice();
-  slots.forEach((p,i)=>{const k=rest.findIndex(id=>DB[id].pos===p);if(k>-1)out[i]=rest.splice(k,1)[0];});
-  for(let i=0;i<5;i++)if(out[i]===null&&rest.length)out[i]=rest.shift();
-  return out;
+  return best||slotify(cheap||pool.slice(0,5));
 }
 function lineupValid(g,ids){
-  if(!ids||ids.length!==5)return false;
-  const h=avail(g);if(h.length>=5&&ids.some(id=>h.indexOf(id)<0))return false;
-  const r=lineupReq(g);for(const p in r)if(cnt(ids,p)<r[p])return false;
-  return lineupCost(ids)<=capOf(g);
+  const l=luIds(ids);if(!ids||l.length!==5||new Set(l).size!==5)return false;
+  const h=healthy(g),own=l.every(id=>g.roster.indexOf(id)>-1);if(!own)return false;
+  if(h.length>=5&&l.some(id=>h.indexOf(id)<0))return false;
+  return lineupCost(l)<=capOf(g);
 }
 function upLastLineup(){
-  const g=G_(0),last=(ST.up&&ST.up.lastLu)||[],keep=last.filter(id=>g.roster.indexOf(id)>-1);
-  if(keep.length===5&&lineupValid(g,keep))return keep.slice();
-  let best=null,bs=-1;combos(g.roster,5).forEach(c=>{if(!keep.every(id=>c.indexOf(id)>-1)||!lineupValid(g,c))return;const sc=c.reduce((a,id)=>a+rating(g,id),0);if(sc>bs){bs=sc;best=c;}});
-  return best||autoLineup(g);
+  const g=G_(0),u=ST.up||{},last=u.lastLu2&&u.lastLu2.length===5?u.lastLu2:null;
+  if(last){const sl=last.map(id=>id&&g.roster.indexOf(id)>-1?id:null);if(lineupValid(g,sl))return sl;
+    const keep=luIds(sl),best=autoLineup(g,UI.luStyle,keep);
+    const out=sl.slice(),add=luIds(best).filter(id=>keep.indexOf(id)<0);
+    add.sort((a,b)=>{const fa=out.some((x,i)=>!x&&SLOT_POS[i]===DB[a].pos)?0:1,fb=out.some((x,i)=>!x&&SLOT_POS[i]===DB[b].pos)?0:1;return fa-fb;});
+    add.forEach(id=>{let i=out.findIndex((x,k)=>!x&&SLOT_POS[k]===DB[id].pos);if(i<0)i=out.findIndex(x=>!x);if(i>-1)out[i]=id;});
+    return lineupValid(g,out)?out:best;}
+  const keep=((u.lastLu)||[]).filter(id=>g.roster.indexOf(id)>-1);
+  return autoLineup(g,UI.luStyle,keep.length<=5?keep:[]);
 }
-function enterLineup(){syncAllLoans();UI.luSel=null;UI.luSwap=false;UI.lu=ST.mode==='up'?upLastLineup():autoLineup(G_(0));go('lineup');}
+function enterLineup(){UI.luSel=null;UI.luSwap=false;UI.lu=ST.mode==='up'?upLastLineup():autoLineup(G_(0),UI.luStyle);go('lineup');}
+function luNorm(g){if(!UI.lu||UI.lu.length!==5)UI.lu=slotify(UI.lu||[]);UI.lu=UI.lu.map(id=>id&&g.roster.indexOf(id)>-1?id:null);}
+function luChips(lu,cost,cap){
+  const ids=luIds(lu),n=oopCount(lu);
+  return `<span class="chip ${ids.length===5?'ok':''}">${ids.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span>${n?`<span class="chip bad">${n}× fremde Position · −${CFG.OOP}</span>`:''}`;
+}
+function luHead(cap){return `2 Guards, 2 Forwards, 1 Center – zusammen höchstens ${cap} Mio. Auf fremder Position verliert ein Spieler ${CFG.OOP} Punkte auf alle Werte.`;}
 function vLineup(){
   const me=G_(0),md=ST.sched[ST.md],my=md&&md.games.find(x=>x.h===0||x.a===0);
   if(!my){ST.phase=ST.mode==='up'?'up_hub':'hub';render();return;}
-  if(!UI.lu)UI.lu=autoLineup(me,UI.luStyle);
-  const opp=my.h===0?my.a:my.h,O=G_(opp),sel=UI.lu,ok=lineupValid(me,sel),ar=arrange(sel),cost=lineupCost(sel),cap=capOf(me);
-  luClean();const slot=(i,p)=>luSlot(ar,i,p,me);
-  app(`${phaseHead(md.label,'Aufstellung',`2 Guards, 2 Forwards, 1 Center – zusammen höchstens ${cap} Mio.`)}
+  if(!UI.lu)UI.lu=autoLineup(me,UI.luStyle);luNorm(me);
+  const opp=my.h===0?my.a:my.h,O=G_(opp),sel=UI.lu,ok=lineupValid(me,sel),cost=lineupCost(sel),cap=capOf(me);
+  luClean();const slot=i=>luSlot(sel,i,me);
+  app(`${phaseHead(md.label,'Aufstellung',luHead(cap))}
 <div class="item mt">${badge(0)}<div class="grow"><div class="b">Du${my.h===0?' (Heim)':''}</div><div class="s mut">${me.w}–${me.l}</div></div><div class="b mut">vs</div><div class="grow" style="text-align:right"><div class="b">${esc(O.name)}${my.a===0?' (Heim)':''}</div><div class="s mut">${O.w}–${O.l}</div></div>${badge(opp)}</div>
 <button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
-<div class="court"><div class="crow">${[2,4,3].map(i=>slot(i,['G','G','F','F','C'][i])).join('')}</div><div class="crow">${[0,1].map(i=>slot(i,'G')).join('')}</div></div>
-<div class="row wrap mt">${needChips(sel)}<span class="chip">${sel.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span></div>
-<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(me).concat(me.loans||[]).map(id=>pRow(0,id,{cls:luRowCls(me,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
+<div class="court"><div class="crow">${[2,4,3].map(slot).join('')}</div><div class="crow">${[0,1].map(slot).join('')}</div></div>
+<div class="row wrap mt">${luChips(sel,cost,cap)}</div>
+<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(me).map(id=>pRow(0,id,{cls:luRowCls(me,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${ST.mode==='up'?'':'<button class="btn sec" onclick="simFromLineup()">Simulieren</button>'}<button class="btn" ${ok?'':'disabled'} onclick="enterMatch()">Spiel starten</button></div></div>`);
 }
-/* Aufstellung: Karte antippen = hervorheben, ✕ = entfernen, ⇄ = tauschen (andere Seite oder Bank) */
+/* Aufstellung: Karte antippen = hervorheben, ✕ = entfernen, ⇄ = tauschen (anderer Platz oder Bank) */
 function luMe(){return G_(Math.max(0,ME()));}
 function luClean(){if(UI.luSel&&(!UI.lu||UI.lu.indexOf(UI.luSel)<0)){UI.luSel=null;UI.luSwap=false;}}
-function luAddErr(me,s,id){
-  const p=DB[id].pos;
-  if(isInj(me,id)&&avail(me).length>=5)return 'Verletzt – nicht einsatzfähig';
-  if(s.length>=5)return 'Bereits 5 Spieler – erst einen auswechseln';
-  const req=lineupReq(me),slack=5-Object.keys(req).reduce((a,q)=>a+req[q],0);
-  const extras=Object.keys(CFG.NEED).reduce((a,q)=>a+Math.max(0,cnt(s,q)-CFG.NEED[q]),0);
-  if(cnt(s,p)>=CFG.NEED[p]&&extras>=slack)return `${POS_NAME[p]}-Position ist schon voll`;
-  if(lineupCost(s.concat(id))>capOf(me))return `Zu teuer – die Starting 5 dürfen max. ${capOf(me)} Mio kosten`;
+function luErr(me,lu,id){
+  if(isInj(me,id)&&healthy(me).length>=5)return 'Verletzt – nicht einsatzfähig';
+  if(lineupCost(lu)>capOf(me))return `Zu teuer – die Starting 5 dürfen max. ${capOf(me)} Mio kosten`;
   return '';
 }
-function luSlot(ar,i,p,g){
-  const id=ar[i];if(!id)return `<div class="cs"><div class="empty">${p}</div><div class="lab mut"></div></div>`;
-  const on=UI.luSel===id,tg=!!(UI.luSwap&&UI.luSel&&UI.luSel!==id&&DB[id].pos===DB[UI.luSel].pos);
+function luSlot(lu,i,g){
+  const id=lu[i],p=SLOT_POS[i];
+  if(!id){const tg=!!UI.luSel;return `<div class="cs"><div class="empty${tg?' tap lu-tgt':''}" ${tg?`onclick="luToSlot(${i})"`:''}>${p}</div><div class="lab mut"></div></div>`;}
+  const on=UI.luSel===id,tg=!!(UI.luSwap&&UI.luSel&&UI.luSel!==id),bad=oop(i,id);
   const xs='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
-  return `<div class="cs"><div class="luw"><div class="cw${on?' lu-on':''}${tg?' lu-tgt':''}" onclick="luTap('${id}')">${cardHTML(id,g,{mini:1})}</div>${on?`<button class="lu-b lu-x" onclick="luRemove()" aria-label="Aus der Starting 5 nehmen">${xs}</button><button class="lu-b lu-s${UI.luSwap?' on':''}" onclick="luSwapBtn()" aria-label="Tauschen">${icSVG('swap')}</button>`:''}</div><div class="lab mut">${DB[id].pos}</div></div>`;
+  return `<div class="cs"><div class="luw"><div class="cw${on?' lu-on':''}${tg?' lu-tgt':''}" onclick="luTap(${i})">${cardHTML(id,g,{mini:1,oop:bad})}</div>${on?`<button class="lu-b lu-x" onclick="luRemove()" aria-label="Aus der Starting 5 nehmen">${xs}</button><button class="lu-b lu-s${UI.luSwap?' on':''}" onclick="luSwapBtn()" aria-label="Tauschen">${icSVG('swap')}</button>`:''}</div><div class="lab ${bad?'oop':'mut'}">${bad?`${DB[id].pos} auf ${p}`:DB[id].pos}</div></div>`;
 }
 function luListLabel(){
   if(!UI.luSel)return 'Kader – tippen zum Ein-/Auswechseln';
   const n=esc(DB[UI.luSel].name);
-  return UI.luSwap?`Tauschen: ${n} – tippe die andere Seite oder einen Bankspieler`:`${n} ausgewählt – tippe einen Bankspieler zum Einwechseln`;
+  return UI.luSwap?`Tauschen: ${n} – tippe einen anderen Platz oder einen Bankspieler`:`${n} ausgewählt – tippe einen Bankspieler zum Einwechseln`;
 }
 function luRowCls(g,sel,id){if(sel.indexOf(id)>-1)return 'on';if(isInj(g,id))return 'off';return UI.luSel?'lu-tg':'';}
-function luTap(id){
-  const sel=UI.luSel;
-  if(sel&&UI.luSwap&&sel!==id){luSwapCourt(sel,id);return;}
+function luTap(i){
+  const lu=UI.lu,id=lu[i],sel=UI.luSel;if(!id)return;
+  if(sel&&UI.luSwap&&sel!==id){const j=lu.indexOf(sel),n=lu.slice();n[i]=sel;n[j]=id;UI.lu=n;UI.luSel=null;UI.luSwap=false;render();luOopToast(n,[i,j]);return;}
   if(sel===id){UI.luSel=null;UI.luSwap=false;}else{UI.luSel=id;UI.luSwap=false;}
   render();
 }
-function luRemove(){const id=UI.luSel;if(!id)return;UI.luSel=null;UI.luSwap=false;UI.lu=UI.lu.filter(x=>x!==id);render();}
+function luToSlot(i){const sel=UI.luSel;if(!sel||UI.lu[i])return;const n=UI.lu.slice(),j=n.indexOf(sel);n[j]=null;n[i]=sel;UI.lu=n;UI.luSel=null;UI.luSwap=false;render();luOopToast(n,[i]);}
+function luOopToast(lu,idx){const k=idx.find(i=>oop(i,lu[i]));if(k!==undefined)toast(`${DB[lu[k]].name} spielt als ${POS_NAME[SLOT_POS[k]]} – alle Werte −${CFG.OOP}`);}
+function luRemove(){const id=UI.luSel;if(!id)return;UI.luSel=null;UI.luSwap=false;UI.lu=UI.lu.map(x=>x===id?null:x);render();}
 function luSwapBtn(){if(!UI.luSel)return;UI.luSwap=!UI.luSwap;render();}
-function luSwapCourt(a,b){
-  UI.luSel=null;UI.luSwap=false;
-  if(DB[a].pos!==DB[b].pos){toast('Auf dem Feld nur Spieler gleicher Position tauschen');render();return;}
-  const ar=arrange(UI.lu),i=ar.indexOf(a),j=ar.indexOf(b);ar[i]=b;ar[j]=a;UI.lu=ar.filter(Boolean);render();
-}
 function luBench(id){
-  const sel=UI.luSel,s=UI.lu;
-  if(s.indexOf(id)>-1){if(sel&&UI.luSwap&&id!==sel){luSwapCourt(sel,id);return;}luToggle(id);return;}
+  const sel=UI.luSel,lu=UI.lu,me=luMe();
+  if(lu.indexOf(id)>-1){if(sel&&UI.luSwap&&id!==sel){luTap(lu.indexOf(id));return;}luToggle(id);return;}
   if(!sel){luToggle(id);return;}
-  const me=luMe(),k=s.indexOf(sel),e=luAddErr(me,s.filter(x=>x!==sel),id);
-  if(e){toast(e.indexOf('Position')>-1?`Passt nicht – hier wird ein ${POS_NAME[DB[sel].pos]} gebraucht`:e);return;}
-  const n=s.slice();n[k]=id;UI.lu=n;UI.luSel=null;UI.luSwap=false;render();toast(`${DB[id].name} kommt für ${DB[sel].name}`);
+  const k=lu.indexOf(sel),n=lu.slice();n[k]=id;const e=luErr(me,n,id);if(e){toast(e);return;}
+  UI.lu=n;UI.luSel=null;UI.luSwap=false;render();
+  if(oop(k,id))luOopToast(n,[k]);else toast(`${DB[id].name} kommt für ${DB[sel].name}`);
 }
 function luToggle(id){
-  const me=luMe(),s=UI.lu;UI.luSel=null;UI.luSwap=false;
-  if(s.indexOf(id)>-1){UI.lu=s.filter(x=>x!==id);render();return;}
-  const e=luAddErr(me,s,id);if(e){toast(e);render();return;}
-  UI.lu=s.concat(id);render();
+  const me=luMe(),lu=UI.lu;UI.luSel=null;UI.luSwap=false;
+  if(lu.indexOf(id)>-1){UI.lu=lu.map(x=>x===id?null:x);render();return;}
+  let i=lu.findIndex((x,k)=>!x&&SLOT_POS[k]===DB[id].pos);if(i<0)i=lu.findIndex(x=>!x);
+  if(i<0){toast('Bereits 5 Spieler – erst einen auswechseln');render();return;}
+  const n=lu.slice();n[i]=id;const e=luErr(me,n,id);if(e){toast(e);render();return;}
+  UI.lu=n;render();luOopToast(n,[i]);
 }
 function luAutoSheet(){
   const cur=UI.luStyle||'bal';
   const o=(k,ic,t,d)=>`<button class="item lu-opt${cur===k?' on':''}" data-act="${k}"><span class="lu-oi">${icSVG(ic)}</span><div class="grow"><div class="b">${t}</div><div class="s mut">${d}</div></div>${cur===k?'<span class="b" style="color:var(--acc)">✓</span>':''}</button>`;
-  openSheet(`<div class="h2" style="margin-bottom:4px">Automatisch aufstellen</div><div class="s mut" style="margin-bottom:12px">Worauf soll die Starting 5 ausgelegt sein? Gehaltsgrenze und Positionen werden eingehalten.</div><div class="col">
+  openSheet(`<div class="h2" style="margin-bottom:4px">Automatisch aufstellen</div><div class="s mut" style="margin-bottom:12px">Worauf soll die Starting 5 ausgelegt sein? Die Gehaltsgrenze wird eingehalten, fremde Positionen nur, wenn es sich trotz −${CFG.OOP} lohnt.</div><div class="col">
 ${o('off','swords','Offensiv','Die besten Angreifer – Shooting und Driving')}
 ${o('bal','sliders','Ausgeglichen','Die beste Gesamtwertung (OVR)')}
 ${o('def','shield','Defensiv','Die besten Verteidiger – Perimeter Def und Zone Def')}
@@ -1544,7 +1539,7 @@ function enterMatch(){
     me:arrange(UI.lu).map(id=>({id:id,used:false,won:false,rev:true})),
     op:arrange(autoLineup(G_(opp))).map(id=>({id:id,used:false,won:false,rev:false})),
     myTurn:home,first:true,phase:'atk',att:-1,def:-1,mode:null,sMe:0,sOp:0,log:[],pending:null};
-  if(ST.mode==='up'){ST.up.lastLu=UI.lu.slice();upSave();}
+  if(ST.mode==='up'){ST.up.lastLu2=UI.lu.slice();ST.up.lastLu=luIds(UI.lu);upSave();}
   UI.lu=null;go('match');
 }
 function canAtk(i){
@@ -1562,7 +1557,7 @@ function mSlot(side,i){
   const isAtt=m.att===i&&((side==='me')===m.myTurn),isDef=m.def===i&&((side==='op')===m.myTurn);
   if(m.phase==='def'&&isAtt)c+=' glow';
   if(m.phase==='duel'&&(isAtt||isDef))c+=' ghost';
-  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="tapSlot('${side}',${i})">${side==='op'&&!e.rev?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1})}${e.used?`<div class="stb ${e.won?'w':'l'}">${e.won?'✓':'✗'}</div>`:''}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
+  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="tapSlot('${side}',${i})">${side==='op'&&!e.rev?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1,oop:oop(i,e.id)})}${e.used?`<div class="stb ${e.won?'w':'l'}">${e.won?'✓':'✗'}</div>`:''}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
 }
 function vMatch(){
   const m=UI.m;if(!m){ST.phase=ST.mode==='up'?'up_hub':'hub';render();return;}
@@ -1594,18 +1589,18 @@ function tapSlot(side,i){
     const e=m.op[i];
     if(m.phase==='def'&&m.myTurn&&!e.used){m.def=i;duel(true);return;}
     if(!e.rev){toast('Verdeckte Karte – greif sie an, um sie aufzudecken');return;}
-    cardSheet(e.id,m.opp);return;
+    cardSheet(e.id,m.opp,{oop:oop(i,e.id)});return;
   }
   const e=m.me[i],ok=canAtk(i);
   let note=ok?'Tippe 🎯 Shooting oder 🏃 Driving, um anzugreifen.':'';
   if(!ok&&m.myTurn&&m.phase==='atk'&&!e.used)note='Der erste Angriff muss mit einem Guard erfolgen.';
-  cardSheet(e.id,0,{attack:ok,note:note,onAttack:k=>{closeSheet();m.att=i;m.mode=k;m.phase='def';render();toast(`${DB[e.id].name} · ${STAT[k]} – wähle ein Ziel`);}});
+  cardSheet(e.id,0,{oop:oop(i,e.id),attack:ok,note:note,onAttack:k=>{closeSheet();m.att=i;m.mode=k;m.phase='def';render();toast(`${DB[e.id].name} · ${STAT[k]} – wähle ein Ziel`);}});
 }
 function cancelAtk(){const m=UI.m;if(!m||m.phase!=='def'||!m.myTurn)return;m.att=-1;m.mode=null;m.phase='atk';render();}
 function duel(humanAtt){
   const m=UI.m,A=humanAtt?m.me[m.att]:m.op[m.att],D=humanAtt?m.op[m.def]:m.me[m.def];
   const gA=humanAtt?G_(0):G_(m.opp),gD=humanAtt?G_(m.opp):G_(0),ak=m.mode,dk=ak==='sh'?'pd':'rp';
-  const av=sv(gA,A.id,ak),dv=sv(gD,D.id,dk);
+  const av=esv(gA,A.id,ak,m.att),dv=esv(gD,D.id,dk,m.def);
   A.rev=true;D.rev=true;
   m.pending={humanAtt:humanAtt,av:av,dv:dv,attWin:av>dv};m.phase='duel';
   render();duelSheet();
@@ -1629,8 +1624,8 @@ function countUp(el,to,ms){
 /* Heimteam steht im Duell immer rechts, Auswärtsteam immer links */
 function duelSides(){
   const m=UI.m,p=m.pending,oname=esc(G_(m.opp).name),ak=m.mode,dk=ak==='sh'?'pd':'rp';
-  const att={c:p.humanAtt?m.me[m.att]:m.op[m.att],g:p.humanAtt?G_(0):G_(m.opp),k:ak,v:p.av,flip:!p.humanAtt,role:'att',who:p.humanAtt?'Du':oname,key:(p.humanAtt?'me':'op')+'-'+m.att,id:'ar-a',vid:'ar-av'};
-  const def={c:p.humanAtt?m.op[m.def]:m.me[m.def],g:p.humanAtt?G_(m.opp):G_(0),k:dk,v:p.dv,flip:p.humanAtt,role:'def',who:p.humanAtt?oname:'Du',key:(p.humanAtt?'op':'me')+'-'+m.def,id:'ar-d',vid:'ar-dv'};
+  const att={i:m.att,c:p.humanAtt?m.me[m.att]:m.op[m.att],g:p.humanAtt?G_(0):G_(m.opp),k:ak,v:p.av,flip:!p.humanAtt,role:'att',who:p.humanAtt?'Du':oname,key:(p.humanAtt?'me':'op')+'-'+m.att,id:'ar-a',vid:'ar-av'};
+  const def={i:m.def,c:p.humanAtt?m.op[m.def]:m.me[m.def],g:p.humanAtt?G_(m.opp):G_(0),k:dk,v:p.dv,flip:p.humanAtt,role:'def',who:p.humanAtt?oname:'Du',key:(p.humanAtt?'op':'me')+'-'+m.def,id:'ar-d',vid:'ar-dv'};
   const attHome=p.humanAtt===m.home;
   return {L:attHome?def:att,R:attHome?att:def,attHome:attHome};
 }
@@ -1643,8 +1638,8 @@ function duelSheet(){
   const m=UI.m,p=m.pending,S=duelSides(),ak=m.mode,dk=ak==='sh'?'pd':'rp';
   const mine=p.humanAtt===p.attWin,tie=p.av===p.dv,oname=esc(G_(m.opp).name);
   const awayName=m.home?oname:'Du',homeName=m.home?'Du':oname,awayS=m.home?m.sOp:m.sMe,homeS=m.home?m.sMe:m.sOp;
-  const fc=(id,g,hid)=>`<div class="flip${hid?' hid':''}"><div class="fr">${cardHTML(id,g)}</div><div class="bk"><div class="back">🏀</div></div></div>`;
-  const side=(s,home)=>`<div class="ar-side">${sideLabel(s,home)}<div class="ar-card" id="${s.id}">${fc(s.c.id,s.g,s.flip)}</div><div class="ar-val" id="${s.vid}" style="color:${STAT_COL[s.k]}">0</div><div class="s mut b" style="font-size:10px">${STAT_ICON[s.k]} ${STAT[s.k]}</div></div>`;
+  const fc=(id,g,hid,i)=>`<div class="flip${hid?' hid':''}"><div class="fr">${cardHTML(id,g,{oop:oop(i,id)})}</div><div class="bk"><div class="back">🏀</div></div></div>`;
+  const side=(s,home)=>`<div class="ar-side">${sideLabel(s,home)}<div class="ar-card" id="${s.id}">${fc(s.c.id,s.g,s.flip,s.i)}</div><div class="ar-val" id="${s.vid}" style="color:${STAT_COL[s.k]}">0</div><div class="s mut b" style="font-size:10px">${STAT_ICON[s.k]} ${STAT[s.k]}</div></div>`;
   const ar=$('arena');arClear();UI.arDone=false;
   ar.innerHTML=`<div class="ar-bg"></div>
 <div class="ar-top"><div class="kick">Duell ${m.log.length+1} · Best of 5</div><div class="s mut" style="margin-top:4px">${awayName} ${awayS} : ${homeS} ${homeName}</div></div>
@@ -1695,7 +1690,7 @@ function duelSheetClassic(){
   const mine=p.humanAtt===p.attWin,tie=p.av===p.dv,oname=esc(G_(m.opp).name);
   UI.shLock=true;
   openSheet(`<div class="kick" style="text-align:center">Duell ${m.log.length+1}</div>
-${(function(){const S=duelSides(),side=(s,home)=>`<div class="side">${sideLabel(s,home)}<div style="height:6px"></div>${cardHTML(s.c.id,s.g)}<div class="bigv" style="color:${STAT_COL[s.k]}">${s.v}</div><div class="s mut b" style="text-align:center">${STAT_ICON[s.k]} ${STAT[s.k]}</div></div>`;return `<div class="duel mt">${side(S.L,false)}<div class="b mut" style="font-size:22px">${S.attHome?'←':'→'}</div>${side(S.R,true)}</div>`;})()}
+${(function(){const S=duelSides(),side=(s,home)=>`<div class="side">${sideLabel(s,home)}<div style="height:6px"></div>${cardHTML(s.c.id,s.g,{oop:oop(s.i,s.c.id)})}<div class="bigv" style="color:${STAT_COL[s.k]}">${s.v}</div><div class="s mut b" style="text-align:center">${STAT_ICON[s.k]} ${STAT[s.k]}</div></div>`;return `<div class="duel mt">${side(S.L,false)}<div class="b mut" style="font-size:22px">${S.attHome?'←':'→'}</div>${side(S.R,true)}</div>`;})()}
 <div class="res" style="background:${mine?'rgba(52,211,153,.12)':'rgba(251,113,133,.12)'};color:${mine?'var(--ok)':'var(--bad)'}">${tie?'Gleichstand – der Verteidiger gewinnt. ':''}${mine?'Punkt für dich!':'Punkt für '+oname}</div>
 <button class="btn mt" data-act="n">Weiter</button>`,{n:afterDuel});
 }
@@ -1727,7 +1722,7 @@ function botAttack(){
   const m=UI.m;if(!ST||ST.phase!=='match'||!m||m.myTurn||m.phase!=='atk')return;
   const g=G_(m.opp);let av=m.op.map((x,i)=>({x:x,i:i})).filter(o=>!o.x.used);
   if(m.first){const gs=av.filter(o=>DB[o.x.id].pos==='G');if(gs.length)av=gs;}
-  av.forEach(o=>{o.k=sv(g,o.x.id,'sh')>=sv(g,o.x.id,'dr')?'sh':'dr';o.s=sv(g,o.x.id,o.k)+Math.random()*6;});
+  av.forEach(o=>{o.k=sv(g,o.x.id,'sh')>=sv(g,o.x.id,'dr')?'sh':'dr';o.s=esv(g,o.x.id,o.k,o.i)+Math.random()*6;});
   av.sort((a,b)=>b.s-a.s);const c=av[0];
   m.att=c.i;m.mode=c.k;m.phase='def';render();
   toast(`${g.name}: ${DB[c.x.id].name} greift mit ${STAT[c.k]} an`);
@@ -1799,7 +1794,7 @@ function completeMatchday(){
   const md=ST.sched[ST.md];if(md.done){go('events');return;}
   const myG=md.games.find(x=>(x.h===0||x.a===0)&&x.hs===null);
   if(myG){coinSim(myG);return;}
-  syncAllLoans();md.games.forEach(gm=>{if(!gm.lh)gm.lh=autoLineup(G_(gm.h));if(!gm.la)gm.la=autoLineup(G_(gm.a));});
+  md.games.forEach(gm=>{if(!gm.lh)gm.lh=autoLineup(G_(gm.h));if(!gm.la)gm.la=autoLineup(G_(gm.a));});
   md.games.forEach(gm=>{
     if(gm.hs===null)simGame(gm);
     if(md.stage==='H'||md.stage==='R'){const H=G_(gm.h),A=G_(gm.a);H.pf+=gm.hs;H.pa+=gm.as;A.pf+=gm.as;A.pa+=gm.hs;if(gm.hs>gm.as){H.w++;A.l++;}else{A.w++;H.l++;}}
@@ -1829,7 +1824,7 @@ function postGame(gi,lineup){
   Object.keys(g.inj).forEach(id=>{g.inj[id]--;if(g.inj[id]<=0)delete g.inj[id];});
   g.buffs=g.buffs.map(b=>({id:b.id,k:b.k,v:b.v,g:b.g-1})).filter(b=>b.g>0);
   const ev=drawEvent(),r=applyEvent(gi,ev,lineup);
-  ST.ev.list.push({gi:gi,ev:ev,text:r.text});syncLoans(g);
+  ST.ev.list.push({gi:gi,ev:ev,text:r.text});
 }
 function vEvents(){
   const md=ST.sched[ST.md],ev=ST.ev,mine=ev.list.find(e=>e.gi===0),E=id=>EVENTS.find(x=>x.id===id);
@@ -1932,7 +1927,6 @@ function moveCard(from,to,id){
   if(from.up[id]){to.up[id]=from.up[id];delete from.up[id];}
   if(from.inj[id]){to.inj[id]=from.inj[id];delete from.inj[id];}
   to.buffs=to.buffs.concat(from.buffs.filter(b=>b.id===id));from.buffs=from.buffs.filter(b=>b.id!==id);
-  syncLoans(from);syncLoans(to);
 }
 function sendOffer(){
   const t=UI.tr,e=tradeEval();if(!e.valid)return;
@@ -1960,7 +1954,7 @@ function relTap(id){
   const why=releaseCheck(G_(0),id);
   cardSheet(id,0,{title:'Vertrag auflösen?',note:why||('Du erhältst 1 Trade-Karte. Der Spieler kommt zurück in den '+(DB[id].tier==='Rookie'?'Rookie-Stapel, seine Sterne verfallen.':'Free-Agency-Stapel.')),actions:[{label:why||'Entlassen → +1 🎟',cls:why?'sec':'bad',disabled:!!why,fn:()=>{closeSheet();finishRelease(id);}}]});
 }
-function doRelease(gi,id){const g=G_(gi);g.roster=g.roster.filter(x=>x!==id);delete g.up[id];delete g.inj[id];g.buffs=g.buffs.filter(b=>b.id!==id);g.trade++;(DB[id].tier==='Rookie'?ST.decks.R:ST.decks.FA).push(id);syncLoans(g);}
+function doRelease(gi,id){const g=G_(gi);g.roster=g.roster.filter(x=>x!==id);delete g.up[id];delete g.inj[id];g.buffs=g.buffs.filter(b=>b.id!==id);g.trade++;(DB[id].tier==='Rookie'?ST.decks.R:ST.decks.FA).push(id);}
 function finishRelease(myId){
   if(myId&&!releaseCheck(G_(0),myId))doRelease(0,myId);
   const news=[];
@@ -2438,7 +2432,7 @@ H.sim=(gi,d)=>{
 H.attack=(gi,d)=>{
   if(ST.phase!=='hub')return;const G=curMd().games[d.g|0];if(!G||G.st!=='live')return;const s=sideOf(G,gi);if(!s)return;
   const m=G.m;if(!canAtkSlot(m,s,d.att))return;const o=s==='h'?'a':'h',D=m.c[o][d.def];if(!D||D.used||(d.mode!=='sh'&&d.mode!=='dr'))return;
-  const A=m.c[s][d.att],og=o==='h'?G.h:G.a,av=sv(G_(gi),A.id,d.mode),dv=sv(G_(og),D.id,d.mode==='sh'?'pd':'rp'),win=av>dv,ws=win?s:o;
+  const A=m.c[s][d.att],og=o==='h'?G.h:G.a,av=esv(G_(gi),A.id,d.mode,d.att),dv=esv(G_(og),D.id,d.mode==='sh'?'pd':'rp',d.def),win=av>dv,ws=win?s:o;
   A.used=D.used=1;A.rev=D.rev=1;A.won=win?1:0;D.won=win?0:1;if(ws==='h')m.sH++;else m.sA++;m.first=0;
   m.log.push({a:A.id,d:D.id,k:d.mode,av:av,dv:dv,w:ws,s:s});
   const to=[G.h,G.a].filter(x=>!isBot(x));
@@ -2478,7 +2472,7 @@ function netAdvance(){
 function botMove(G){
   const m=G.m,s=m.turn,o=s==='h'?'a':'h',g=G_(s==='h'?G.h:G.a);
   const av=m.c[s].map((x,i)=>({x:x,i:i})).filter(q=>canAtkSlot(m,s,q.i));
-  av.forEach(q=>{q.k=sv(g,q.x.id,'sh')>=sv(g,q.x.id,'dr')?'sh':'dr';q.s=sv(g,q.x.id,q.k)+Math.random()*6;});av.sort((a,b)=>b.s-a.s);
+  av.forEach(q=>{q.k=sv(g,q.x.id,'sh')>=sv(g,q.x.id,'dr')?'sh':'dr';q.s=esv(g,q.x.id,q.k,q.i)+Math.random()*6;});av.sort((a,b)=>b.s-a.s);
   const t=pick(m.c[o].map((x,i)=>({x:x,i:i})).filter(q=>!q.x.used));return{att:av[0].i,mode:av[0].k,def:t.i};
 }
 function botRun(key,gi,t,d,ms){NET.bk=NET.bk||{};if(NET.bk[key])return;NET.bk[key]=setTimeout(()=>{delete NET.bk[key];if(!ST||!NET.on||!NET.host)return;apply(gi,t,d,NET.pid);commitNet();},ms);}
@@ -2496,19 +2490,19 @@ function nDuelDone(){
 function duelFX(d,done){
   const me=ME(),ms=me===d.h?'h':(me===d.a?'a':null),o=d.as==='h'?'a':'h',gOf=s=>s==='h'?d.h:d.a,nm=s=>s===ms?'Du':esc(G_(gOf(s)).name);
   const dk=d.k==='sh'?'pd':'rp',attWin=d.w===d.as,mine=d.w===ms,tie=d.av===d.dv;
-  const att={id:d.aid,g:G_(gOf(d.as)),k:d.k,v:d.av,role:'att',s:d.as,key:d.as+'-'+d.ai,el:'ar-a',vid:'ar-av'};
-  const def={id:d.did,g:G_(gOf(o)),k:dk,v:d.dv,role:'def',s:o,key:o+'-'+d.di,el:'ar-d',vid:'ar-dv'};
+  const att={i:d.ai,id:d.aid,g:G_(gOf(d.as)),k:d.k,v:d.av,role:'att',s:d.as,key:d.as+'-'+d.ai,el:'ar-a',vid:'ar-av'};
+  const def={i:d.di,id:d.did,g:G_(gOf(o)),k:dk,v:d.dv,role:'def',s:o,key:o+'-'+d.di,el:'ar-d',vid:'ar-dv'};
   const attHome=d.as==='h',L=attHome?def:att,R=attHome?att:def,bH=d.sH-(d.w==='h'?1:0),bA=d.sA-(d.w==='a'?1:0);
   const lab=x=>{const t=TEAMS[x.g.team];return `<div style="font-size:10px;font-weight:900;letter-spacing:.06em;color:${t.col};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${x.s==='h'?'🏠 HEIM':'✈️ AUSWÄRTS'} · ${nm(x.s)}</div><div style="font-size:11px;font-weight:900;text-align:center;color:${x.role==='att'?'#fbbf24':'#7dd3fc'}">${x.role==='att'?'⚔️ Angriff':'🛡 Verteidigung'}</div>`;};
   const res=`${tie?'Gleichstand – der Verteidiger gewinnt.<br>':''}${mine?'Punkt für dich!':'Punkt für '+nm(d.w)}`,rbg=mine?'rgba(52,211,153,.14)':'rgba(251,113,133,.14)',rcol=mine?'var(--ok)':'var(--bad)';
   UI.duelCb=done;
   if(RM){
     UI.shLock=true;
-    openSheet(`<div class="kick" style="text-align:center">Duell ${d.n} · ${nm('a')} ${d.sA} : ${d.sH} ${nm('h')}</div><div class="duel mt">${[L,R].map(x=>`<div class="side">${lab(x)}<div style="height:6px"></div>${cardHTML(x.id,x.g)}<div class="bigv" style="color:${STAT_COL[x.k]}">${x.v}</div><div class="s mut b" style="text-align:center">${STAT_ICON[x.k]} ${STAT[x.k]}</div></div>`).join(`<div class="b mut" style="font-size:22px">${attHome?'←':'→'}</div>`)}</div>
+    openSheet(`<div class="kick" style="text-align:center">Duell ${d.n} · ${nm('a')} ${d.sA} : ${d.sH} ${nm('h')}</div><div class="duel mt">${[L,R].map(x=>`<div class="side">${lab(x)}<div style="height:6px"></div>${cardHTML(x.id,x.g,{oop:oop(x.i,x.id)})}<div class="bigv" style="color:${STAT_COL[x.k]}">${x.v}</div><div class="s mut b" style="text-align:center">${STAT_ICON[x.k]} ${STAT[x.k]}</div></div>`).join(`<div class="b mut" style="font-size:22px">${attHome?'←':'→'}</div>`)}</div>
 <div class="res" style="background:${rbg};color:${rcol}">${res}</div><button class="btn mt" data-act="n">Weiter</button>`,{n:nDuelDone});
     return;
   }
-  const fc=(x)=>`<div class="flip${x.s!==ms?' hid':''}"><div class="fr">${cardHTML(x.id,x.g)}</div><div class="bk"><div class="back">🏀</div></div></div>`;
+  const fc=(x)=>`<div class="flip${x.s!==ms?' hid':''}"><div class="fr">${cardHTML(x.id,x.g,{oop:oop(x.i,x.id)})}</div><div class="bk"><div class="back">🏀</div></div></div>`;
   const side=x=>`<div class="ar-side">${lab(x)}<div class="ar-card" id="${x.el}">${fc(x)}</div><div class="ar-val" id="${x.vid}" style="color:${STAT_COL[x.k]}">0</div><div class="s mut b" style="font-size:10px">${STAT_ICON[x.k]} ${STAT[x.k]}</div></div>`;
   const ar=$('arena');arClear();UI.arDone=false;
   ar.innerHTML=`<div class="ar-bg"></div>
@@ -2614,15 +2608,15 @@ function oHub(){
 function oLineup(k){
   const md=curMd(),me=ME(),g=G_(me),G=md.games[k],opp=G.h===me?G.a:G.h,O=G_(opp),key=ST.season+':'+ST.md;
   if(!UI.lu||UI.luKey!==key){UI.lu=autoLineup(g,UI.luStyle);UI.luKey=key;UI.luSel=null;UI.luSwap=false;}
-  UI.lu=UI.lu.filter(id=>g.roster.indexOf(id)>-1||isLoan(g,id));
-  const sel=UI.lu,ok=lineupValid(g,sel),ar=arrange(sel),cost=lineupCost(sel),cap=capOf(g);
-  luClean();const slot=(i,p)=>luSlot(ar,i,p,g);
-  app(`<button class="btn sec sm" onclick="UI.view=null;render()">← Spieltag</button><div class="mt">${phaseHead(md.label,'Aufstellung',`2 Guards, 2 Forwards, 1 Center – zusammen höchstens ${cap} Mio.`)}</div>
+  luNorm(g);
+  const sel=UI.lu,ok=lineupValid(g,sel),cost=lineupCost(sel),cap=capOf(g);
+  luClean();const slot=i=>luSlot(sel,i,g);
+  app(`<button class="btn sec sm" onclick="UI.view=null;render()">← Spieltag</button><div class="mt">${phaseHead(md.label,'Aufstellung',luHead(cap))}</div>
 <div class="item mt">${badge(me)}<div class="grow"><div class="b">Du${G.h===me?' (Heim)':''}</div><div class="s mut">${g.w}–${g.l}</div></div><div class="b mut">vs</div><div class="grow" style="text-align:right"><div class="b">${esc(O.name)}${G.h===opp?' (Heim)':''}</div><div class="s mut">${O.w}–${O.l}</div></div>${badge(opp)}</div>
 <button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
-<div class="court"><div class="crow">${[2,4,3].map(i=>slot(i,['G','G','F','F','C'][i])).join('')}</div><div class="crow">${[0,1].map(i=>slot(i,'G')).join('')}</div></div>
-<div class="row wrap mt">${needChips(sel)}<span class="chip">${sel.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span></div>
-<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(g).concat(g.loans||[]).map(id=>pRow(me,id,{cls:luRowCls(g,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
+<div class="court"><div class="crow">${[2,4,3].map(slot).join('')}</div><div class="crow">${[0,1].map(slot).join('')}</div></div>
+<div class="row wrap mt">${luChips(sel,cost,cap)}</div>
+<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(g).map(id=>pRow(me,id,{cls:luRowCls(g,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${isBot(opp)?`<button class="btn sec" ${UI.pending?'disabled':''} onclick="act('sim',{g:${k},ids:UI.lu.slice()})">Simulieren</button>`:''}<button class="btn" ${ok&&!UI.pending?'':'disabled'} onclick="act('lineup',{g:${k},ids:UI.lu.slice()});UI.view=null">Aufstellung bestätigen</button></div></div>`);
 }
 function nSlot(G,k,side,i){
@@ -2633,7 +2627,7 @@ function nSlot(G,k,side,i){
   else if(!mine&&myTurn&&UI.sel&&!UI.pending)c+=' tgt';
   if(mine&&UI.sel&&UI.sel.att===i)c+=' glow';
   const hid=!mine&&!e.rev;
-  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="nTap(${k},'${side}',${i})">${hid?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1})}${e.used?`<div class="stb ${e.won?'w':'l'}">${e.won?'✓':'✗'}</div>`:''}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
+  return `<div class="cs"><div class="${c}" data-slot="${side}-${i}" onclick="nTap(${k},'${side}',${i})">${hid?'<div class="back">🏀</div>':cardHTML(e.id,g,{mini:1,oop:oop(i,e.id)})}${e.used?`<div class="stb ${e.won?'w':'l'}">${e.won?'✓':'✗'}</div>`:''}</div><div class="lab" style="color:${e.used?(e.won?'var(--ok)':'var(--bad)'):'var(--mut)'}">${DB[e.id].pos}${e.used?(e.won?' ✓':' ✗'):''}</div></div>`;
 }
 function nTap(k,side,i){
   const G=curMd().games[k];if(!G||!G.m)return;const m=G.m,me=ME(),s=sideOf(G,me),o=s==='h'?'a':'h';
@@ -2641,12 +2635,12 @@ function nTap(k,side,i){
     const e=m.c[o][i];
     if(UI.sel&&m.turn===s&&!e.used&&!UI.pending){const a=UI.sel;UI.sel=null;act('attack',{g:k,att:a.att,mode:a.mode,def:i});return;}
     if(!e.rev){toast('Verdeckte Karte – greif sie an, um sie aufzudecken');return;}
-    cardSheet(e.id,o==='h'?G.h:G.a);return;
+    cardSheet(e.id,o==='h'?G.h:G.a,{oop:oop(i,e.id)});return;
   }
   const e=m.c[s][i],ok=canAtkSlot(m,s,i)&&!UI.pending;
   let note=ok?'Tippe 🎯 Shooting oder 🏃 Driving, um anzugreifen.':'';
   if(!ok&&m.turn===s&&!e.used&&m.first)note='Der erste Angriff muss mit einem Guard erfolgen.';
-  cardSheet(e.id,me,{attack:ok,note:note,onAttack:kk=>{closeSheet();UI.sel={g:k,att:i,mode:kk};render();toast(`${DB[e.id].name} · ${STAT[kk]} – wähle ein Ziel`);}});
+  cardSheet(e.id,me,{oop:oop(i,e.id),attack:ok,note:note,onAttack:kk=>{closeSheet();UI.sel={g:k,att:i,mode:kk};render();toast(`${DB[e.id].name} · ${STAT[kk]} – wähle ein Ziel`);}});
 }
 function oMatch(k){
   const md=curMd(),G=md.games[k],m=G.m,me=ME(),s=sideOf(G,me),o=s==='h'?'a':'h',opp=o==='h'?G.h:G.a,O=G_(opp),tm=TEAMS[G_(me).team],to=TEAMS[O.team],myTurn=m.turn===s;
@@ -3408,7 +3402,7 @@ function vUpHub(){
 
 /* ── Punkte nach dem Spiel ── */
 function upAfterGame(m){
-  const u=ST.up,s=u.stage,g=G_(0),o=G_(1),myIds=m.me.map(x=>x.id),opIds=m.op.map(x=>x.id),win=m.sMe>m.sOp;u.lastLu=myIds;
+  const u=ST.up,s=u.stage,g=G_(0),o=G_(1),myIds=m.me.map(x=>x.id),opIds=m.op.map(x=>x.id),win=m.sMe>m.sOp;u.lastLu=myIds;u.lastLu2=myIds.slice();
   if(win){
     let a=0,b=0,cb=false;m.log.forEach(l=>{if(l.me)a++;else b++;if(b===2&&a===0)cb=true;});
     const avg=(gg,ids)=>ids.reduce((x,id)=>x+rating(gg,id),0)/Math.max(1,ids.length),und=avg(o,opIds)>avg(g,myIds);

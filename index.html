@@ -103,6 +103,7 @@ button.chip{cursor:pointer;padding:7px 11px}
 .card.mini .m-st{position:absolute;left:4cqw;right:4cqw;bottom:4cqw;display:grid;grid-template-columns:1fr 1fr;gap:2.5cqw}
 .card.mini .m-st span{font-size:13cqw;font-weight:900;text-align:center;border-radius:3cqw;line-height:1.25}
 .card.mini .m-st .o{background:#8fa3c6}.card.mini .m-st .d{background:#b35a5a}
+.loanb{position:absolute;top:28%;right:4px;font-size:9px;font-weight:900;background:var(--sky);color:#06202e;border-radius:5px;padding:1px 4px;letter-spacing:.03em}
 .injb{position:absolute;top:28%;left:4px;font-size:9px;font-weight:900;background:var(--bad);color:#2b0710;border-radius:5px;padding:1px 4px}
 .back{width:100%;aspect-ratio:5/7;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:repeating-linear-gradient(45deg,#14203d 0 7px,#101a33 7px 14px);display:flex;align-items:center;justify-content:center;font-size:24px}
 .back.lgd{border-color:rgba(247,168,27,.6);background:repeating-linear-gradient(45deg,#3a2508 0 7px,#2b1b06 7px 14px)}
@@ -705,6 +706,30 @@ function cnt(ids,p){return ids.filter(id=>DB[id].pos===p).length;}
 function missingPos(ids){const m=[];for(const p in CFG.NEED)for(let i=cnt(ids,p);i<CFG.NEED[p];i++)m.push(p);return m;}
 function healthy(g){return g.roster.filter(id=>!(g.inj[id]>0));}
 function isInj(g,id){return g.inj[id]>0;}
+/* Leihspieler: fehlt durch Verletzung eine Position, springt der günstigste passende Basic aus dem Free-Agency-Stapel ein */
+function avail(g){return healthy(g).concat(g.loans||[]);}
+function isLoan(g,id){return !!(g&&g.loans&&g.loans.indexOf(id)>-1);}
+function loanLeft(g,id){
+  if(!isLoan(g,id))return -1;const p=DB[id].pos,L=g.loans.filter(x=>DB[x].pos===p),j=L.indexOf(id),n=L.length;
+  const inj=g.roster.filter(x=>DB[x].pos===p&&g.inj[x]>0).map(x=>g.inj[x]).sort((a,b)=>a-b);
+  return inj[n-1-j]||0;
+}
+function loanPick(p){
+  const d=ST.decks.FA;let best=-1;
+  const better=(a,b)=>{const A=DB[a],B=DB[b],ab=A.tier==='Basic'?0:1,bb=B.tier==='Basic'?0:1;return ab!==bb?ab<bb:(A.sal!==B.sal?A.sal<B.sal:rating(null,a)<rating(null,b));};
+  d.forEach((id,k)=>{const c=DB[id];if(!c||c.pos!==p||c.tier==='Legend')return;if(best<0||better(id,d[best]))best=k;});
+  return best<0?null:d.splice(best,1)[0];
+}
+function syncLoans(g){
+  if(!ST||ST.mode==='up'||!g||!g.roster||!ST.decks)return;
+  g.loans=g.loans||[];const h=healthy(g);
+  for(const p in CFG.NEED){
+    const need=Math.max(0,CFG.NEED[p]-cnt(h,p));let L=g.loans.filter(x=>DB[x].pos===p);
+    while(L.length>need){const id=L.pop();g.loans=g.loans.filter(x=>x!==id);delete g.inj[id];delete g.up[id];g.buffs=g.buffs.filter(b=>b.id!==id);ST.decks.FA.push(id);}
+    while(L.length<need){const id=loanPick(p);if(!id)break;g.loans.push(id);L.push(id);}
+  }
+}
+function syncAllLoans(){if(ST&&ST.gms)ST.gms.forEach(syncLoans);}
 function sortRoster(g){const o={G:0,F:1,C:2};return g.roster.slice().sort((a,b)=>o[DB[a].pos]-o[DB[b].pos]||rating(g,b)-rating(g,a));}
 function combos(arr,k){const out=[],c=[];(function rec(s){if(c.length===k){out.push(c.slice());return;}for(let i=s;i<arr.length;i++){c.push(arr[i]);rec(i+1);c.pop();}})(0);return out;}
 
@@ -731,7 +756,7 @@ function teamCard(id,gi){cardSheet(id,gi,{actions:[{label:'← Zurück zum Team'
 function starStr(n){return `<span style="color:#fde047">${'★'.repeat(n)}</span><span style="color:rgba(255,255,255,.25)">${'★'.repeat(3-n)}</span>`;}
 function cardHTML(id,g,o){
   o=o||{};const c=DB[id],fc=TIER_COL[c.tier],s=k=>sv(g,id,k),art=CARD_IMAGES[id],tpl=TIER_IMG[c.tier],bgi=art||tpl,inj=g&&g.inj[id]>0;
-  const injb=inj?`<div class="injb">🩹${g.inj[id]}</div>`:'';
+  const injb=(inj?`<div class="injb">🩹${g.inj[id]}</div>`:'')+(isLoan(g,id)?'<div class="loanb">LEIHE</div>':'');
   const bg=bgi?`background-image:url('${bgi}')`:`border-color:${fc};background:linear-gradient(180deg,${fc}45 0%,#16213f 40%,#0c1428 100%)`;
   const face=`<div class="c-face" style="background:${fc}26;color:${fc};border-color:${fc}88">${ini(c.name)}</div>`;
   if(o.mini)return `<div class="card mini${bgi?' art':''}" style="${bg}"><div class="m-top"><span style="color:${bgi?'#fff':fc}">${c.pos}</span><span class="ovr2">${rating(g,id)}</span></div>${art?'':face+`<div class="m-name">${esc(c.name)}</div>`}<div class="m-st"><span class="o">${s('sh')}</span><span class="d">${s('pd')}</span><span class="o">${s('dr')}</span><span class="d">${s('rp')}</span></div>${injb}</div>`;
@@ -751,7 +776,7 @@ function pRow(gi,id,o){
   o=o||{};const g=G_(gi),c=DB[id],tc=TIER_COL[c.tier],inj=g.inj[id]>0;
   return `<div class="item ${o.cls||''} ${o.click?'tap':''}" ${o.click?`onclick="${o.click}"`:''}>
 <div class="badge" style="background:${tc}22;color:${tc};border:1px solid ${tc}66">${c.pos}</div>
-<div class="grow"><div class="b" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''} ${inj?`<span class="chip bad" style="padding:1px 6px">🩹${g.inj[id]}</span>`:''}</div>
+<div class="grow"><div class="b" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''} ${inj?`<span class="chip bad" style="padding:1px 6px">🩹${g.inj[id]}</span>`:''}${isLoan(g,id)?`<span class="chip" style="padding:1px 6px;color:var(--sky);border-color:rgba(125,211,252,.45)">Leihe${loanLeft(g,id)>0?' · noch '+loanLeft(g,id):''}</span>`:''}</div>
 <div class="s mut">${c.tier}${c.skill?' · '+esc(c.skill):''} · ${c.sal} Mio</div>
 <div class="s mut">SHO ${sv(g,id,'sh')} · DRV ${sv(g,id,'dr')} · PER ${sv(g,id,'pd')} · ZONE ${sv(g,id,'rp')}</div></div>
 <div class="b" style="font-size:16px;color:${tc}">${rating(g,id)}</div></div>`;
@@ -796,7 +821,7 @@ ${act?`<div class="s b" style="color:${col}">ANGREIFEN ▸</div>`:''}
   openSheet(`${o.title?`<div class="kick" style="text-align:center;margin-bottom:10px">${o.title}</div>`:''}
 <div class="row" style="gap:14px;align-items:center"><div class="cs-zoom" data-act="z" style="width:128px;flex-shrink:0">${cardHTML(id,g)}<span class="zhint">Antippen zum Vergrößern</span></div>
 <div class="grow col" style="gap:4px"><div class="h2">${esc(c.name)}</div><div class="s mut">${POS_NAME[c.pos]} · ${c.tier}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''}</div>
-<div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip">OVR ${rating(g,id)}</span><span class="chip">💰 ${c.sal} Mio</span>${inj?`<span class="chip bad">🩹 ${g.inj[id]} Spiel${g.inj[id]>1?'e':''}</span>`:''}</div></div></div>
+<div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip">OVR ${rating(g,id)}</span><span class="chip">💰 ${c.sal} Mio</span>${inj?`<span class="chip bad">🩹 ${g.inj[id]} Spiel${g.inj[id]>1?'e':''}</span>`:''}${isLoan(g,id)?`<span class="chip" style="color:var(--sky);border-color:rgba(125,211,252,.45)">Leihe${loanLeft(g,id)>0?' · noch '+loanLeft(g,id)+' Spiel'+(loanLeft(g,id)>1?'e':''):''}</span>`:''}</div></div></div>
 <div class="tiles mt">${tiles}</div>${skill}
 <div class="s mut mt" style="text-align:center">${o.note||'Shooting gegen Perimeter Def · Driving gegen Zone Def · Gleichstand gewinnt der Verteidiger'}</div>
 <div class="col mt">${acts}<button class="btn sec" data-act="x">Schließen</button></div>`,h);
@@ -929,7 +954,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 35</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 36</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -1344,7 +1369,7 @@ function roundRobin(list){
   return rounds;
 }
 function startSeason(){
-  ST.gms.forEach(g=>{g.w=0;g.l=0;g.pf=0;g.pa=0;g.inj={};g.buffs=[];});
+  ST.gms.forEach(g=>{g.w=0;g.l=0;g.pf=0;g.pa=0;g.inj={};g.buffs=[];});syncAllLoans();
   const rr=roundRobin(ST.order);ST.sched=[];
   rr.forEach((gs,k)=>ST.sched.push({stage:'H',label:`Hinrunde · Spieltag ${k+1}/${rr.length}`,games:gs.map(p=>({h:p[0],a:p[1],hs:null,as:null}))}));
   rr.forEach((gs,k)=>ST.sched.push({stage:'R',label:`Rückrunde · Spieltag ${k+1}/${rr.length}`,games:gs.map(p=>({h:p[1],a:p[0],hs:null,as:null}))}));
@@ -1364,9 +1389,9 @@ function standTable(){
 <div class="s mut" style="margin-top:10px">💍 Ringe: ${ST.order.map(i=>`${gname(i)} ${G_(i).rings}`).join(' · ')}</div>`;
 }
 function injuryNote(g){
-  const ids=Object.keys(g.inj).filter(id=>g.inj[id]>0);
-  if(!ids.length&&!g.buffs.length)return '';
-  return `<div class="panel"><div class="lbl">Status</div><div class="col">${ids.map(id=>`<div class="row s"><span class="chip bad">🩹 ${g.inj[id]}</span><span>${esc(DB[id].name)} fällt aus</span></div>`).join('')}${g.buffs.map(b=>`<div class="row s"><span class="chip ok">+${b.v}</span><span>${esc(DB[b.id].name)}: ${STAT[b.k]} (nächstes Spiel)</span></div>`).join('')}</div></div>`;
+  const ids=Object.keys(g.inj).filter(id=>g.inj[id]>0&&!isLoan(g,id)),ln=g.loans||[];
+  if(!ids.length&&!g.buffs.length&&!ln.length)return '';
+  return `<div class="panel"><div class="lbl">Status</div><div class="col">${ids.map(id=>`<div class="row s"><span class="chip bad">🩹 ${g.inj[id]}</span><span>${esc(DB[id].name)} fällt aus</span></div>`).join('')}${ln.map(id=>`<div class="row s"><span class="chip" style="color:var(--sky);border-color:rgba(125,211,252,.45)">Leihe</span><span>${esc(DB[id].name)} springt als ${POS_NAME[DB[id].pos]} ein${loanLeft(g,id)>0?' · noch '+loanLeft(g,id)+' Spiel'+(loanLeft(g,id)>1?'e':''):''}</span></div>`).join('')}${g.buffs.map(b=>`<div class="row s"><span class="chip ok">+${b.v}</span><span>${esc(DB[b.id].name)}: ${STAT[b.k]} (nächstes Spiel)</span></div>`).join('')}</div></div>`;
 }
 function vHub(){
   const md=ST.sched[ST.md];if(!md){advance();return;}
@@ -1388,14 +1413,14 @@ function vHub(){
 }
 
 /* ═════════════ AUFSTELLUNG (Gehaltsgrenze gilt für die Starting 5) ═════════════ */
-function lineupReq(g){const h=healthy(g),base=h.length>=5?h:g.roster,r={};for(const p in CFG.NEED)r[p]=Math.min(CFG.NEED[p],cnt(base,p));return r;}
+function lineupReq(g){const h=avail(g),base=h.length>=5?h:g.roster.concat(g.loans||[]),r={};for(const p in CFG.NEED)r[p]=Math.min(CFG.NEED[p],cnt(base,p));return r;}
 function luScore(g,id,st){
   if(st==='off'){const a=[sv(g,id,'sh'),sv(g,id,'dr')].sort((x,y)=>y-x);return a[0]*.7+a[1]*.3+rating(g,id)*.01;}
   if(st==='def')return (sv(g,id,'pd')+sv(g,id,'rp'))/2+rating(g,id)*.01;
   return rating(g,id);
 }
 function autoLineup(g,st){
-  const h=healthy(g),pool=h.length>=5?h:g.roster.slice(),req=lineupReq(g),cap=capOf(g);
+  const h=avail(g),pool=h.length>=5?h:g.roster.concat(g.loans||[]),req=lineupReq(g),cap=capOf(g);
   let best=null,bs=-1,cheap=null,cs=1e9;
   combos(pool,5).forEach(c=>{
     if(!Object.keys(req).every(p=>cnt(c,p)>=req[p]))return;
@@ -1413,7 +1438,7 @@ function arrange(ids){
 }
 function lineupValid(g,ids){
   if(!ids||ids.length!==5)return false;
-  const h=healthy(g);if(h.length>=5&&ids.some(id=>h.indexOf(id)<0))return false;
+  const h=avail(g);if(h.length>=5&&ids.some(id=>h.indexOf(id)<0))return false;
   const r=lineupReq(g);for(const p in r)if(cnt(ids,p)<r[p])return false;
   return lineupCost(ids)<=capOf(g);
 }
@@ -1423,7 +1448,7 @@ function upLastLineup(){
   let best=null,bs=-1;combos(g.roster,5).forEach(c=>{if(!keep.every(id=>c.indexOf(id)>-1)||!lineupValid(g,c))return;const sc=c.reduce((a,id)=>a+rating(g,id),0);if(sc>bs){bs=sc;best=c;}});
   return best||autoLineup(g);
 }
-function enterLineup(){UI.luSel=null;UI.luSwap=false;UI.lu=ST.mode==='up'?upLastLineup():autoLineup(G_(0));go('lineup');}
+function enterLineup(){syncAllLoans();UI.luSel=null;UI.luSwap=false;UI.lu=ST.mode==='up'?upLastLineup():autoLineup(G_(0));go('lineup');}
 function vLineup(){
   const me=G_(0),md=ST.sched[ST.md],my=md&&md.games.find(x=>x.h===0||x.a===0);
   if(!my){ST.phase=ST.mode==='up'?'up_hub':'hub';render();return;}
@@ -1435,7 +1460,7 @@ function vLineup(){
 <button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
 <div class="court"><div class="crow">${[2,4,3].map(i=>slot(i,['G','G','F','F','C'][i])).join('')}</div><div class="crow">${[0,1].map(i=>slot(i,'G')).join('')}</div></div>
 <div class="row wrap mt">${needChips(sel)}<span class="chip">${sel.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span></div>
-<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(me).map(id=>pRow(0,id,{cls:luRowCls(me,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
+<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(me).concat(me.loans||[]).map(id=>pRow(0,id,{cls:luRowCls(me,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${ST.mode==='up'?'':'<button class="btn sec" onclick="simFromLineup()">Simulieren</button>'}<button class="btn" ${ok?'':'disabled'} onclick="enterMatch()">Spiel starten</button></div></div>`);
 }
 /* Aufstellung: Karte antippen = hervorheben, ✕ = entfernen, ⇄ = tauschen (andere Seite oder Bank) */
@@ -1443,7 +1468,7 @@ function luMe(){return G_(Math.max(0,ME()));}
 function luClean(){if(UI.luSel&&(!UI.lu||UI.lu.indexOf(UI.luSel)<0)){UI.luSel=null;UI.luSwap=false;}}
 function luAddErr(me,s,id){
   const p=DB[id].pos;
-  if(isInj(me,id)&&healthy(me).length>=5)return 'Verletzt – nicht einsatzfähig';
+  if(isInj(me,id)&&avail(me).length>=5)return 'Verletzt – nicht einsatzfähig';
   if(s.length>=5)return 'Bereits 5 Spieler – erst einen auswechseln';
   const req=lineupReq(me),slack=5-Object.keys(req).reduce((a,q)=>a+req[q],0);
   const extras=Object.keys(CFG.NEED).reduce((a,q)=>a+Math.max(0,cnt(s,q)-CFG.NEED[q]),0);
@@ -1774,7 +1799,7 @@ function completeMatchday(){
   const md=ST.sched[ST.md];if(md.done){go('events');return;}
   const myG=md.games.find(x=>(x.h===0||x.a===0)&&x.hs===null);
   if(myG){coinSim(myG);return;}
-  md.games.forEach(gm=>{if(!gm.lh)gm.lh=autoLineup(G_(gm.h));if(!gm.la)gm.la=autoLineup(G_(gm.a));});
+  syncAllLoans();md.games.forEach(gm=>{if(!gm.lh)gm.lh=autoLineup(G_(gm.h));if(!gm.la)gm.la=autoLineup(G_(gm.a));});
   md.games.forEach(gm=>{
     if(gm.hs===null)simGame(gm);
     if(md.stage==='H'||md.stage==='R'){const H=G_(gm.h),A=G_(gm.a);H.pf+=gm.hs;H.pa+=gm.as;A.pf+=gm.as;A.pa+=gm.hs;if(gm.hs>gm.as){H.w++;A.l++;}else{A.w++;H.l++;}}
@@ -1804,7 +1829,7 @@ function postGame(gi,lineup){
   Object.keys(g.inj).forEach(id=>{g.inj[id]--;if(g.inj[id]<=0)delete g.inj[id];});
   g.buffs=g.buffs.map(b=>({id:b.id,k:b.k,v:b.v,g:b.g-1})).filter(b=>b.g>0);
   const ev=drawEvent(),r=applyEvent(gi,ev,lineup);
-  ST.ev.list.push({gi:gi,ev:ev,text:r.text});
+  ST.ev.list.push({gi:gi,ev:ev,text:r.text});syncLoans(g);
 }
 function vEvents(){
   const md=ST.sched[ST.md],ev=ST.ev,mine=ev.list.find(e=>e.gi===0),E=id=>EVENTS.find(x=>x.id===id);
@@ -1907,6 +1932,7 @@ function moveCard(from,to,id){
   if(from.up[id]){to.up[id]=from.up[id];delete from.up[id];}
   if(from.inj[id]){to.inj[id]=from.inj[id];delete from.inj[id];}
   to.buffs=to.buffs.concat(from.buffs.filter(b=>b.id===id));from.buffs=from.buffs.filter(b=>b.id!==id);
+  syncLoans(from);syncLoans(to);
 }
 function sendOffer(){
   const t=UI.tr,e=tradeEval();if(!e.valid)return;
@@ -1934,7 +1960,7 @@ function relTap(id){
   const why=releaseCheck(G_(0),id);
   cardSheet(id,0,{title:'Vertrag auflösen?',note:why||('Du erhältst 1 Trade-Karte. Der Spieler kommt zurück in den '+(DB[id].tier==='Rookie'?'Rookie-Stapel, seine Sterne verfallen.':'Free-Agency-Stapel.')),actions:[{label:why||'Entlassen → +1 🎟',cls:why?'sec':'bad',disabled:!!why,fn:()=>{closeSheet();finishRelease(id);}}]});
 }
-function doRelease(gi,id){const g=G_(gi);g.roster=g.roster.filter(x=>x!==id);delete g.up[id];delete g.inj[id];g.buffs=g.buffs.filter(b=>b.id!==id);g.trade++;(DB[id].tier==='Rookie'?ST.decks.R:ST.decks.FA).push(id);}
+function doRelease(gi,id){const g=G_(gi);g.roster=g.roster.filter(x=>x!==id);delete g.up[id];delete g.inj[id];g.buffs=g.buffs.filter(b=>b.id!==id);g.trade++;(DB[id].tier==='Rookie'?ST.decks.R:ST.decks.FA).push(id);syncLoans(g);}
 function finishRelease(myId){
   if(myId&&!releaseCheck(G_(0),myId))doRelease(0,myId);
   const news=[];
@@ -2588,7 +2614,7 @@ function oHub(){
 function oLineup(k){
   const md=curMd(),me=ME(),g=G_(me),G=md.games[k],opp=G.h===me?G.a:G.h,O=G_(opp),key=ST.season+':'+ST.md;
   if(!UI.lu||UI.luKey!==key){UI.lu=autoLineup(g,UI.luStyle);UI.luKey=key;UI.luSel=null;UI.luSwap=false;}
-  UI.lu=UI.lu.filter(id=>g.roster.indexOf(id)>-1);
+  UI.lu=UI.lu.filter(id=>g.roster.indexOf(id)>-1||isLoan(g,id));
   const sel=UI.lu,ok=lineupValid(g,sel),ar=arrange(sel),cost=lineupCost(sel),cap=capOf(g);
   luClean();const slot=(i,p)=>luSlot(ar,i,p,g);
   app(`<button class="btn sec sm" onclick="UI.view=null;render()">← Spieltag</button><div class="mt">${phaseHead(md.label,'Aufstellung',`2 Guards, 2 Forwards, 1 Center – zusammen höchstens ${cap} Mio.`)}</div>
@@ -2596,7 +2622,7 @@ function oLineup(k){
 <button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
 <div class="court"><div class="crow">${[2,4,3].map(i=>slot(i,['G','G','F','F','C'][i])).join('')}</div><div class="crow">${[0,1].map(i=>slot(i,'G')).join('')}</div></div>
 <div class="row wrap mt">${needChips(sel)}<span class="chip">${sel.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span></div>
-<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(g).map(id=>pRow(me,id,{cls:luRowCls(g,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
+<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(g).concat(g.loans||[]).map(id=>pRow(me,id,{cls:luRowCls(g,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${isBot(opp)?`<button class="btn sec" ${UI.pending?'disabled':''} onclick="act('sim',{g:${k},ids:UI.lu.slice()})">Simulieren</button>`:''}<button class="btn" ${ok&&!UI.pending?'':'disabled'} onclick="act('lineup',{g:${k},ids:UI.lu.slice()});UI.view=null">Aufstellung bestätigen</button></div></div>`);
 }
 function nSlot(G,k,side,i){

@@ -186,6 +186,9 @@ body.mm .stb{display:flex;position:absolute;top:-5px;right:-5px;width:18px;heigh
 .sheet{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:#111a2e;border:1px solid var(--ln);border-bottom:0;border-radius:22px 22px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));animation:su .22s ease-out}
 .sheet:before{content:'';display:block;width:40px;height:4px;border-radius:9px;background:rgba(255,255,255,.18);margin:0 auto 12px}
 @keyframes su{from{transform:translateY(40px);opacity:.4}}
+.sheet.sw-r{animation:swr .22s ease-out}.sheet.sw-l{animation:swl .22s ease-out}
+@keyframes swr{from{transform:translateX(56px);opacity:0}}@keyframes swl{from{transform:translateX(-56px);opacity:0}}
+.sheet.sw-drag{transition:none}.sheet.sw-back{transition:transform .2s ease,opacity .2s ease}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tile{background:var(--p2);border:1px solid var(--ln);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px;text-align:left}
 .tile.act{cursor:pointer;border-width:2px}
@@ -755,10 +758,30 @@ function pRow(gi,id,o){
 }
 
 /* ═════════════ SHEETS ═════════════ */
-function openSheet(html,h){UI.sh=h||{};const s=$('sheet');s.innerHTML=`<div class="sheet">${html}</div>`;s.classList.remove('hidden');navSoon();}
+function openSheet(html,h){UI.sh=h||{};const s=$('sheet'),sw=UI.swIn;UI.swIn=null;s.innerHTML=`<div class="sheet${sw?' sw-'+sw:''}">${html}</div>`;s.classList.remove('hidden');navSoon();}
 function closeSheet(){const s=$('sheet');s.classList.add('hidden');s.innerHTML='';UI.sh={};navSoon();}
+/* Karten-Fenster: nach links/rechts wischen zeigt die nächste/vorige Karte derselben Auswahl */
+function cNav(list,cur,go){return list&&list.filter(Boolean).length>1?{list:list,i:cur,go:go}:null;}
+function sheetNav(dir){
+  const nv=UI.sh&&UI.sh._nav;if(!nv||UI.shLock)return false;
+  const L=nv.list,n=L.length;
+  for(let st=1;st<n;st++){const k=((nv.i+dir*st)%n+n)%n;if(L[k]){UI.swIn=dir>0?'r':'l';nv.go(k);return true;}}
+  return false;
+}
+(function(){
+  const el=$('sheet');let x0=0,y0=0,dx=0,on=false,lock=null;
+  const box=()=>el.querySelector('.sheet');
+  el.addEventListener('touchstart',e=>{if(!(UI.sh&&UI.sh._nav)||e.touches.length!==1){on=false;return;}on=true;lock=null;dx=0;x0=e.touches[0].clientX;y0=e.touches[0].clientY;},{passive:true});
+  el.addEventListener('touchmove',e=>{if(!on)return;const t=e.touches[0];dx=t.clientX-x0;const dy=t.clientY-y0;
+    if(lock===null&&(Math.abs(dx)>10||Math.abs(dy)>10))lock=Math.abs(dx)>Math.abs(dy)*1.2?'x':'y';
+    if(lock!=='x')return;const b=box();if(b){b.classList.add('sw-drag');b.style.transform=`translateX(${dx*.45}px)`;b.style.opacity=String(Math.max(.4,1-Math.abs(dx)/500));}},{passive:true});
+  el.addEventListener('touchend',()=>{if(!on)return;on=false;const b=box();
+    if(lock==='x'&&Math.abs(dx)>60&&sheetNav(dx<0?1:-1))return;
+    if(b){b.classList.remove('sw-drag');b.classList.add('sw-back');b.style.transform='';b.style.opacity='';setTimeout(()=>b.classList.remove('sw-back'),220);}},{passive:true});
+  document.addEventListener('keydown',e=>{if($('sheet').classList.contains('hidden'))return;if(e.key==='ArrowRight')sheetNav(1);else if(e.key==='ArrowLeft')sheetNav(-1);});
+})();
 function cardSheet(id,gi,o){
-  o=o||{};const g=(gi===null||gi===undefined)?null:G_(gi),c=DB[id],tc=TIER_COL[c.tier],h={x:closeSheet,z:()=>cardZoom(id,gi)};
+  o=o||{};const g=(gi===null||gi===undefined)?null:G_(gi),c=DB[id],tc=TIER_COL[c.tier],h={x:closeSheet,z:()=>cardZoom(id,gi),_nav:o.nav||null};
   const tiles=['sh','pd','dr','rp'].map(k=>{
     const base=DB[id][k],v=sv(g,id,k),d=v-base,col=STAT_COL[k],act=o.attack&&(k==='sh'||k==='dr');
     if(act)h['atk-'+k]=()=>o.onAttack(k);
@@ -906,7 +929,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 34</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 35</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -1106,10 +1129,10 @@ ${human?`<div class="cta"><div class="in">${!start?'<button class="btn sec" oncl
   if(!human)later(()=>botFA(gi),750);
 }
 function faTap(i){
-  const f=ST.fa,id=f.pool[i];if(!id)return;
-  if(faCur()!==0){cardSheet(id,null);return;}
+  const f=ST.fa,id=f.pool[i];if(!id)return;const nav=cNav(f.pool,i,faTap);
+  if(faCur()!==0){cardSheet(id,null,{nav:nav});return;}
   const why=faCheck(0,id),season=f.mode==='season';
-  cardSheet(id,null,{actions:[{label:why||(season?`Verpflichten · 1 🎟`:`Verpflichten · ${DB[id].sal} Mio`),cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();if(season)confirmSign(id);else faSign(0,i);}}]});
+  cardSheet(id,null,{nav:nav,actions:[{label:why||(season?`Verpflichten · 1 🎟`:`Verpflichten · ${DB[id].sal} Mio`),cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();if(season)confirmSign(id);else faSign(0,i);}}]});
 }
 function confirmSign(id){
   const me=G_(0),c=DB[id],restT=me.trade-1,rAfter=me.roster.length+1;
@@ -1290,10 +1313,10 @@ function lotDone(){
   const f=UI.lotApply;UI.lotApply=null;if(f)f();
 }
 function draftTap(i){
-  const d=ST.dr,id=d.pool[i];if(!id)return;
-  if(d.cur!==0){cardSheet(id,null);return;}
+  const d=ST.dr,id=d.pool[i];if(!id)return;const nav=cNav(d.pool,i,draftTap);
+  if(d.cur!==0){cardSheet(id,null,{nav:nav});return;}
   const why=draftCheck(0);
-  cardSheet(id,null,{actions:[{label:why||`Draften · ${DB[id].sal} Mio`,cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();draftTake(0,i);}}]});
+  cardSheet(id,null,{nav:nav,actions:[{label:why||`Draften · ${DB[id].sal} Mio`,cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();draftTake(0,i);}}]});
 }
 function draftTake(gi,i){const d=ST.dr,id=d.pool[i];if(!id||d.cur!==gi||draftCheck(gi))return;d.pool.splice(i,1);G_(gi).roster.push(id);d.picks.push({gi:gi,id:id});d.cur=-1;lastBall(d);render();save();}
 function draftSkip(gi){const d=ST.dr;if(d.cur!==gi)return;d.picks.push({gi:gi,id:null});d.cur=-1;lastBall(d);render();save();}
@@ -2350,10 +2373,10 @@ ${done?readyCta('Weiter → Free Agency'):''}`);
 }
 function oRoster(me){const my=G_(me);return `<div class="panel"><div class="lbl">Dein Kader <span>${my.roster.length}/${CFG.ROSTER_MAX}</span></div><div class="col">${sortRoster(my).map(id=>pRow(me,id,{click:`cardSheet('${id}',${me})`})).join('')||'<div class="s mut">Noch keine Spieler</div>'}</div></div>`;}
 function oDraftTap(i){
-  const d=ST.dr,id=d.pool[i],me=ME();if(!id)return;
-  if(d.cur!==me||UI.pending){cardSheet(id,null);return;}
+  const d=ST.dr,id=d.pool[i],me=ME();if(!id)return;const nav=cNav(d.pool,i,oDraftTap);
+  if(d.cur!==me||UI.pending){cardSheet(id,null,{nav:nav});return;}
   const why=draftCheck(me);
-  cardSheet(id,null,{actions:[{label:why||`Draften · ${DB[id].sal} Mio`,cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();act('dr_take',{id:id});}}]});
+  cardSheet(id,null,{nav:nav,actions:[{label:why||`Draften · ${DB[id].sal} Mio`,cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();act('dr_take',{id:id});}}]});
 }
 function oPreDone(){
   const me=ME(),avg=g=>{const l=autoLineup(g);return l.length?Math.round(l.reduce((s,id)=>s+rating(g,id),0)/l.length):0;};
@@ -2794,10 +2817,10 @@ function oFA(){
 ${mine?(start?(!ok.some(Boolean)?`<div class="cta"><div class="in"><button class="btn warn" onclick="act('fa_skip')">Keine passende Karte – aussetzen</button></div></div>`:''):`<div class="cta"><div class="in"><button class="btn sec" ${UI.pending?'disabled':''} onclick="oConfirmPass()">Passen</button></div></div>`):''}`);
 }
 function oFaTap(i){
-  const f=ST.fa,id=f.pool[i],me=ME();if(!id)return;
-  if(faCur()!==me||UI.pending){cardSheet(id,null);return;}
+  const f=ST.fa,id=f.pool[i],me=ME();if(!id)return;const nav=cNav(f.pool,i,oFaTap);
+  if(faCur()!==me||UI.pending){cardSheet(id,null,{nav:nav});return;}
   const why=faCheck(me,id),season=f.mode==='season';
-  cardSheet(id,null,{actions:[{label:why||(season?'Verpflichten · 1 🎟':`Verpflichten · ${DB[id].sal} Mio`),cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();if(season)oConfirmSign(id);else act('fa_sign',{id:id});}}]});
+  cardSheet(id,null,{nav:nav,actions:[{label:why||(season?'Verpflichten · 1 🎟':`Verpflichten · ${DB[id].sal} Mio`),cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();if(season)oConfirmSign(id);else act('fa_sign',{id:id});}}]});
 }
 function oDraft(){
   const d=ST.dr,me=ME(),my=G_(me),start=d.mode==='start',rem=d.balls.filter(x=>d.order.indexOf(x)<0),done=draftDone();
@@ -3326,7 +3349,7 @@ function vUpDraft(){
 <div class="grid4 mt">${u.offers.map((id,i)=>`<div class="cw sel" onclick="upPickTap(${i})">${cardHTML(id,null)}</div>`).join('')}</div>
 <div class="panel"><div class="lbl">Dein Kader</div><div class="col">${sortRoster(g).map(id=>pRow(0,id,{click:`cardSheet('${id}',0)`})).join('')}</div></div>`);
 }
-function upPickTap(i){const id=ST.up.offers[i];if(!id)return;cardSheet(id,null,{actions:[{label:`Wählen · ${DB[id].sal} Mio`,cls:'ok',fn:()=>{closeSheet();upPick(i);}}]});}
+function upPickTap(i){const id=ST.up.offers[i];if(!id)return;cardSheet(id,null,{nav:cNav(ST.up.offers,i,upPickTap),actions:[{label:`Wählen · ${DB[id].sal} Mio`,cls:'ok',fn:()=>{closeSheet();upPick(i);}}]});}
 
 /* ── Gegner & Stufen ── */
 function upMakeOpp(st){
@@ -3397,8 +3420,8 @@ ${r.rookies.length?`<div class="panel"><div class="lbl">Rookie-Draft · 1 von 3<
 ${r.upg.length?`<div class="panel"><div class="lbl">Rookie-Upgrade · +1 Stern</div><div class="col">${r.upg.map(id=>pRow(0,id,{click:`upUpgradeTap('${id}')`})).join('')}</div></div>`:'<div class="panel"><div class="s mut">Kein Rookie aus diesem Spiel kann aufsteigen.</div></div>'}
 ${none?`<div class="cta"><div class="in"><button class="btn" onclick="upNoReward()">Weiter · +1 Trade-Karte</button></div></div>`:''}`);
 }
-function upRookieTap(id){cardSheet(id,null,{actions:[{label:'Diesen Rookie nehmen',cls:'ok',fn:()=>{closeSheet();upTakeRookie(id);}}]});}
-function upUpgradeTap(id){const g=G_(0);cardSheet(id,0,{note:`Danach: ${lvl(g,id)+1}★ · alle Werte +${CFG.UP_STEP}`,actions:[{label:'+1 Stern',cls:'ok',fn:()=>{closeSheet();upUpgrade(id);}}]});}
+function upRookieTap(id){const L=(ST.up.reward&&ST.up.reward.rookies)||[];cardSheet(id,null,{nav:cNav(L,L.indexOf(id),k=>upRookieTap(L[k])),actions:[{label:'Diesen Rookie nehmen',cls:'ok',fn:()=>{closeSheet();upTakeRookie(id);}}]});}
+function upUpgradeTap(id){const g=G_(0),L=(ST.up.reward&&ST.up.reward.upg)||[];cardSheet(id,0,{nav:cNav(L,L.indexOf(id),k=>upUpgradeTap(L[k])),note:`Danach: ${lvl(g,id)+1}★ · alle Werte +${CFG.UP_STEP}`,actions:[{label:'+1 Stern',cls:'ok',fn:()=>{closeSheet();upUpgrade(id);}}]});}
 
 /* ── Kaderumbau & Shop ── */
 function upVal(g,id){const t=DB[id].tier;return t==='Rookie'?1+lvl(g,id):(UP_TC[t]||1);}
@@ -3421,11 +3444,11 @@ function upBuy(id){
 }
 function upRelTap(id){
   const u=ST.up,g=G_(0),why=u.relLeft<=0?'Diese Runde schon 3 Spieler abgegeben':releaseCheck(g,id),v=upVal(g,id);
-  cardSheet(id,0,{actions:[{label:why||`Abgeben · +${v} Trade-Karte${v>1?'n':''}`,cls:why?'sec':'bad',disabled:!!why,fn:()=>{closeSheet();upRelease(id);}}]});
+  const L=sortRoster(g);cardSheet(id,0,{nav:cNav(L,L.indexOf(id),k=>upRelTap(L[k])),actions:[{label:why||`Abgeben · +${v} Trade-Karte${v>1?'n':''}`,cls:why?'sec':'bad',disabled:!!why,fn:()=>{closeSheet();upRelease(id);}}]});
 }
 function upBuyTap(id){
   const g=G_(0),p=UP_PRICE[DB[id].tier]||1,why=g.roster.length>=CFG.ROSTER_MAX?'Kader voll (max. 11)':(g.trade<p?'Zu wenige Trade-Karten':'');
-  cardSheet(id,null,{actions:[{label:why||`Kaufen · ${p} Trade-Karte${p>1?'n':''}`,cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();upBuy(id);}}]});
+  const L=ST.up.shop||[];cardSheet(id,null,{nav:cNav(L,L.indexOf(id),k=>upBuyTap(L[k])),actions:[{label:why||`Kaufen · ${p} Trade-Karte${p>1?'n':''}`,cls:why?'sec':'ok',disabled:!!why,fn:()=>{closeSheet();upBuy(id);}}]});
 }
 function vUpShop(){
   const u=ST.up,g=G_(0);

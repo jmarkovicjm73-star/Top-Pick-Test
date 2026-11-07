@@ -438,6 +438,10 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 
 .czoom{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px calc(20px + env(safe-area-inset-bottom));background:rgba(3,6,15,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:zoom-out}
 .czoom.on{display:flex;animation:fadeIn .18s both}.czoom.out{animation:fadeOut .18s both}
+.cpeek{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;padding:20px 16px;background:rgba(3,6,15,.82);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);pointer-events:none}
+.cpeek.on{display:flex;animation:fadeIn .14s both}
+.cpeek .cz-card{animation:czIn .22s cubic-bezier(.2,.9,.3,1.2) both}
+[data-cid]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .cz-card{width:min(76vw,calc((100svh - 160px) / 1.4),380px);animation:czIn .28s cubic-bezier(.2,.9,.3,1.2) both;filter:drop-shadow(0 18px 40px rgba(0,0,0,.6))}
 .cz-bar{display:flex;align-items:center;gap:12px}
 @keyframes czIn{from{transform:scale(.6);opacity:0}}
@@ -743,14 +747,14 @@ function cardHTML(id,g,o){
   const injb=inj?`<div class="injb">🩹${g.inj[id]}</div>`:'';
   const bg=bgi?`background-image:url('${bgi}')`:`border-color:${fc};background:linear-gradient(180deg,${fc}45 0%,#16213f 40%,#0c1428 100%)`;
   const face=`<div class="c-face" style="background:${fc}26;color:${fc};border-color:${fc}88">${ini(c.name)}</div>`;
-  if(o.mini)return `<div class="card mini${bgi?' art':''}${pen?' oop':''}" style="${bg}"><div class="m-top"><span style="color:${bgi?'#fff':fc}">${c.pos}</span><span class="ovr2">${rating(g,id)-pen}</span></div>${art?'':face+`<div class="m-name">${esc(c.name)}</div>`}<div class="m-st"><span class="o">${s('sh')}</span><span class="d">${s('pd')}</span><span class="o">${s('dr')}</span><span class="d">${s('rp')}</span></div>${injb}</div>`;
+  if(o.mini)return `<div class="card mini${bgi?' art':''}${pen?' oop':''}" data-cid="${id}"${pen?' data-oop="1"':''} style="${bg}"><div class="m-top"><span style="color:${bgi?'#fff':fc}">${c.pos}</span><span class="ovr2">${rating(g,id)-pen}</span></div>${art?'':face+`<div class="m-name">${esc(c.name)}</div>`}<div class="m-st"><span class="o">${s('sh')}</span><span class="d">${s('pd')}</span><span class="o">${s('dr')}</span><span class="d">${s('rp')}</span></div>${injb}</div>`;
   const stars=c.tier==='Legend'?3:(c.tier==='Rookie'?lvl(g,id):-1);
   const starsH=stars>=0?`<div class="c-stars">${[0,1,2].map(k=>`<span class="${k<stars?'on':'off'}">★</span>`).join('')}</div>`:'';
   const bot=`<div class="c-bot"><div class="c-col"><div class="pl o"><i>SHO</i><b>${s('sh')}</b></div><div class="pl o"><i>DRV</i><b>${s('dr')}</b></div></div>
 <div class="c-pos"><b style="color:${bgi?'#fff':fc}">${c.pos}</b><small>${POS_NAME[c.pos].toUpperCase()}</small></div>
 <div class="c-col"><div class="pl d"><i>PER</i><b>${s('pd')}</b></div><div class="pl d"><i>ZONE</i><b>${s('rp')}</b></div></div></div>`;
-  if(bgi)return `<div class="card art${pen?' oop':''}" style="${bg}"><div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)-pen}</div>${art?'':face+`<div class="c-name">${esc(c.name)}</div>`}${starsH}${bot}${injb}</div>`;
-  return `<div class="card${pen?' oop':''}" style="${bg}">
+  if(bgi)return `<div class="card art${pen?' oop':''}" data-cid="${id}"${pen?' data-oop="1"':''} style="${bg}"><div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)-pen}</div>${art?'':face+`<div class="c-name">${esc(c.name)}</div>`}${starsH}${bot}${injb}</div>`;
+  return `<div class="card${pen?' oop':''}" data-cid="${id}"${pen?' data-oop="1"':''} style="${bg}">
 <div class="c-sal">${c.sal} MIO</div><div class="c-ovr">${rating(g,id)-pen}</div>
 <div class="c-skill" style="background:${fc}">${esc(c.tier)}</div>
 ${face}<div class="c-name">${esc(c.name)}</div>
@@ -758,7 +762,7 @@ ${starsH}${bot}${injb}</div>`;
 }
 function pRow(gi,id,o){
   o=o||{};const g=G_(gi),c=DB[id],tc=TIER_COL[c.tier],inj=g.inj[id]>0;
-  return `<div class="item ${o.cls||''} ${o.click?'tap':''}" ${o.click?`onclick="${o.click}"`:''}>
+  return `<div class="item ${o.cls||''} ${o.click?'tap':''}" data-cid="${id}" ${o.click?`onclick="${o.click}"`:''}>
 <div class="badge" style="background:${tc}22;color:${tc};border:1px solid ${tc}66">${c.pos}</div>
 <div class="grow"><div class="b" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}${c.tier==='Rookie'?' '+starStr(lvl(g,id)):''} ${inj?`<span class="chip bad" style="padding:1px 6px">🩹${g.inj[id]}</span>`:''}</div>
 <div class="s mut">${c.tier}${c.skill?' · '+esc(c.skill):''} · ${c.sal} Mio</div>
@@ -938,7 +942,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 37</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 38</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -3571,6 +3575,26 @@ function teamPicker(sel,fn,taken){
 }
 
 
+/* ── Lange drücken: Karte groß anzeigen, solange der Finger draufbleibt ── */
+(function(){
+  let T=null,on=false,x0=0,y0=0,eatClick=0;
+  const el=()=>{let z=document.getElementById('cpeek');if(!z){z=document.createElement('div');z.id='cpeek';z.className='cpeek';document.body.appendChild(z);}return z;};
+  const owner=id=>{if(!ST||!ST.gms)return null;const g=ST.gms.find(x=>x.roster&&x.roster.indexOf(id)>-1);return g||null;};
+  const show=t=>{const id=t.dataset.cid;if(!DB[id])return;const z=el();
+    z.innerHTML=`<div class="cz-card">${cardHTML(id,owner(id),{oop:t.dataset.oop==='1'})}</div>`;z.classList.add('on');on=true;eatClick=Date.now();
+    try{if(navigator.vibrate)navigator.vibrate(12);}catch(e){}};
+  const hide=()=>{clearTimeout(T);T=null;if(on){const z=el();z.classList.remove('on');z.innerHTML='';on=false;eatClick=Date.now();}};
+  document.addEventListener('pointerdown',e=>{
+    if(e.button>0)return;const t=e.target.closest('[data-cid]');if(!t||t.closest('#cpeek,#czoom'))return;
+    x0=e.clientX;y0=e.clientY;clearTimeout(T);T=setTimeout(()=>{T=null;show(t);},420);
+  },true);
+  document.addEventListener('pointermove',e=>{if(T&&(Math.abs(e.clientX-x0)>10||Math.abs(e.clientY-y0)>10)){clearTimeout(T);T=null;}},true);
+  ['pointerup','pointercancel'].forEach(n=>document.addEventListener(n,hide,true));
+  window.addEventListener('blur',hide);
+  document.addEventListener('touchmove',e=>{if(on)e.preventDefault();},{passive:false});
+  document.addEventListener('contextmenu',e=>{if(on||e.target.closest('[data-cid]'))e.preventDefault();},true);
+  document.addEventListener('click',e=>{if(Date.now()-eatClick<350&&e.target.closest('[data-cid]')){e.stopPropagation();e.preventDefault();}},true);
+})();
 /* ── Karte groß anzeigen ── */
 function cardZoom(id,gi,withDetails){
   const g=(gi===null||gi===undefined)?null:G_(gi);let z=document.getElementById('czoom');

@@ -112,6 +112,22 @@ button.chip{cursor:pointer;padding:7px 11px}
 .cw.sel{outline:2.5px solid var(--acc);outline-offset:1px;cursor:pointer;animation:pa 1.6s ease-in-out infinite}
 .cw.dis{opacity:.35}
 .cw.tgt{outline:2.5px solid var(--bad);outline-offset:1px;cursor:pointer;animation:pr 1.6s ease-in-out infinite}
+.court:not(.full){overflow:visible}
+.luw{position:relative;width:100%}
+.luw .cw{transition:transform .18s ease,box-shadow .18s ease}
+.cw.lu-on{outline:2.5px solid var(--acc);outline-offset:1px;transform:translateY(-4px) scale(1.03);box-shadow:0 10px 22px rgba(0,0,0,.45)}
+.cw.lu-tgt{outline:2px dashed var(--acc);outline-offset:2px;cursor:pointer;animation:pa 1.6s ease-in-out infinite}
+.lu-b{position:absolute;top:calc(38% - 14px);width:28px;height:28px;border-radius:50%;border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.5);animation:lupop .18s ease-out}
+.lu-b .ic{width:15px;height:15px;stroke-width:2.4}
+.lu-x{left:-12px;background:var(--bad);color:#fff}
+.lu-s{right:-12px;background:#1b2540;color:var(--fg)}
+.lu-s.on{background:var(--acc);color:#0a0f1e}
+@keyframes lupop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.item.lu-tg{border-color:rgba(var(--acc-rgb,255,154,60),.7);border-style:dashed}
+.lu-opt{width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.lu-opt.on{border-color:var(--acc);background:rgba(var(--acc-rgb,255,154,60),.1)}
+.lu-oi{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);color:var(--acc);flex-shrink:0}
+.lu-oi .ic{width:18px;height:18px}
 .cw.glow{outline:2.5px solid var(--warn);outline-offset:1px;box-shadow:0 0 18px rgba(251,191,36,.5);animation:none}
 .cw.uw{opacity:.6;outline:2px solid var(--ok);outline-offset:1px}
 .cw.ul{opacity:.22}
@@ -661,7 +677,8 @@ function cardImgRematch(){
 
 /* ═════════════ STATE ═════════════ */
 let ST=null;
-const UI={setup:{n:4,name:'',team:0},tab:'md',sh:{},shLock:false,lu:null,m:null,tr:null,spin:false,saved:null};
+const UI={setup:{n:4,name:'',team:0},tab:'md',sh:{},shLock:false,lu:null,m:null,tr:null,spin:false,saved:null,luSel:null,luSwap:false,luStyle:'bal'};
+const NAV={armed:false,skip:0,warnAt:0,warnK:'',t:null};
 
 /* ═════════════ HELFER ═════════════ */
 const $=id=>document.getElementById(id);
@@ -738,8 +755,8 @@ function pRow(gi,id,o){
 }
 
 /* ═════════════ SHEETS ═════════════ */
-function openSheet(html,h){UI.sh=h||{};const s=$('sheet');s.innerHTML=`<div class="sheet">${html}</div>`;s.classList.remove('hidden');}
-function closeSheet(){const s=$('sheet');s.classList.add('hidden');s.innerHTML='';UI.sh={};}
+function openSheet(html,h){UI.sh=h||{};const s=$('sheet');s.innerHTML=`<div class="sheet">${html}</div>`;s.classList.remove('hidden');navSoon();}
+function closeSheet(){const s=$('sheet');s.classList.add('hidden');s.innerHTML='';UI.sh={};navSoon();}
 function cardSheet(id,gi,o){
   o=o||{};const g=(gi===null||gi===undefined)?null:G_(gi),c=DB[id],tc=TIER_COL[c.tier],h={x:closeSheet,z:()=>cardZoom(id,gi)};
   const tiles=['sh','pd','dr','rp'].map(k=>{
@@ -841,7 +858,7 @@ function fitCourt(){
   if(Math.abs(w-w0)>1){b.style.setProperty('--cwm',w.toFixed(1)+'px');requestAnimationFrame(fitCourt);}
 }
 window.addEventListener('resize',()=>requestAnimationFrame(fitCourt));
-function render(){audSync();applyTheme();setTimeout(()=>requestAnimationFrame(fitCourt),0);const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
+function render(){navSoon();audSync();applyTheme();setTimeout(()=>requestAnimationFrame(fitCourt),0);const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
 function seasonLabel(){
   const p=ST.phase;if(ST.mode==='up')return 'Ultimate Pick · Stufe '+ST.up.stage;
   if(p==='dice'||p==='captain'||p==='pre_done')return 'Preseason';
@@ -889,7 +906,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 33</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 34</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -1349,14 +1366,19 @@ function vHub(){
 
 /* ═════════════ AUFSTELLUNG (Gehaltsgrenze gilt für die Starting 5) ═════════════ */
 function lineupReq(g){const h=healthy(g),base=h.length>=5?h:g.roster,r={};for(const p in CFG.NEED)r[p]=Math.min(CFG.NEED[p],cnt(base,p));return r;}
-function autoLineup(g){
+function luScore(g,id,st){
+  if(st==='off'){const a=[sv(g,id,'sh'),sv(g,id,'dr')].sort((x,y)=>y-x);return a[0]*.7+a[1]*.3+rating(g,id)*.01;}
+  if(st==='def')return (sv(g,id,'pd')+sv(g,id,'rp'))/2+rating(g,id)*.01;
+  return rating(g,id);
+}
+function autoLineup(g,st){
   const h=healthy(g),pool=h.length>=5?h:g.roster.slice(),req=lineupReq(g),cap=capOf(g);
   let best=null,bs=-1,cheap=null,cs=1e9;
   combos(pool,5).forEach(c=>{
     if(!Object.keys(req).every(p=>cnt(c,p)>=req[p]))return;
     const cost=lineupCost(c);if(cost<cs){cs=cost;cheap=c;}
     if(cost>cap)return;
-    const s=c.reduce((a,id)=>a+rating(g,id),0);if(s>bs){bs=s;best=c;}
+    const s=c.reduce((a,id)=>a+luScore(g,id,st),0);if(s>bs){bs=s;best=c;}
   });
   return best||cheap||pool.slice(0,5);
 }
@@ -1378,31 +1400,85 @@ function upLastLineup(){
   let best=null,bs=-1;combos(g.roster,5).forEach(c=>{if(!keep.every(id=>c.indexOf(id)>-1)||!lineupValid(g,c))return;const sc=c.reduce((a,id)=>a+rating(g,id),0);if(sc>bs){bs=sc;best=c;}});
   return best||autoLineup(g);
 }
-function enterLineup(){UI.lu=ST.mode==='up'?upLastLineup():autoLineup(G_(0));go('lineup');}
+function enterLineup(){UI.luSel=null;UI.luSwap=false;UI.lu=ST.mode==='up'?upLastLineup():autoLineup(G_(0));go('lineup');}
 function vLineup(){
   const me=G_(0),md=ST.sched[ST.md],my=md&&md.games.find(x=>x.h===0||x.a===0);
   if(!my){ST.phase=ST.mode==='up'?'up_hub':'hub';render();return;}
-  if(!UI.lu)UI.lu=autoLineup(me);
+  if(!UI.lu)UI.lu=autoLineup(me,UI.luStyle);
   const opp=my.h===0?my.a:my.h,O=G_(opp),sel=UI.lu,ok=lineupValid(me,sel),ar=arrange(sel),cost=lineupCost(sel),cap=capOf(me);
-  const slot=(i,p)=>`<div class="cs">${ar[i]?`<div class="cw" onclick="luToggle('${ar[i]}')">${cardHTML(ar[i],me,{mini:1})}</div>`:`<div class="empty">${p}</div>`}<div class="lab mut">${ar[i]?DB[ar[i]].pos:''}</div></div>`;
+  luClean();const slot=(i,p)=>luSlot(ar,i,p,me);
   app(`${phaseHead(md.label,'Aufstellung',`2 Guards, 2 Forwards, 1 Center – zusammen höchstens ${cap} Mio.`)}
 <div class="item mt">${badge(0)}<div class="grow"><div class="b">Du${my.h===0?' (Heim)':''}</div><div class="s mut">${me.w}–${me.l}</div></div><div class="b mut">vs</div><div class="grow" style="text-align:right"><div class="b">${esc(O.name)}${my.a===0?' (Heim)':''}</div><div class="s mut">${O.w}–${O.l}</div></div>${badge(opp)}</div>
 <button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
 <div class="court"><div class="crow">${[2,4,3].map(i=>slot(i,['G','G','F','F','C'][i])).join('')}</div><div class="crow">${[0,1].map(i=>slot(i,'G')).join('')}</div></div>
 <div class="row wrap mt">${needChips(sel)}<span class="chip">${sel.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span></div>
-<div class="panel"><div class="lbl">Kader – tippen zum Ein-/Auswechseln</div><div class="col">${sortRoster(me).map(id=>pRow(0,id,{cls:sel.indexOf(id)>-1?'on':(isInj(me,id)?'off':''),click:`luToggle('${id}')`})).join('')}</div></div>
-<div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="UI.lu=autoLineup(G_(0));render()">Auto</button>${ST.mode==='up'?'':'<button class="btn sec" onclick="simFromLineup()">Simulieren</button>'}<button class="btn" ${ok?'':'disabled'} onclick="enterMatch()">Spiel starten</button></div></div>`);
+<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(me).map(id=>pRow(0,id,{cls:luRowCls(me,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
+<div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${ST.mode==='up'?'':'<button class="btn sec" onclick="simFromLineup()">Simulieren</button>'}<button class="btn" ${ok?'':'disabled'} onclick="enterMatch()">Spiel starten</button></div></div>`);
 }
-function luToggle(id){
-  const me=G_(Math.max(0,ME())),s=UI.lu,p=DB[id].pos;
-  if(s.indexOf(id)>-1){UI.lu=s.filter(x=>x!==id);render();return;}
-  if(isInj(me,id)&&healthy(me).length>=5){toast('Verletzt – nicht einsatzfähig');return;}
-  if(s.length>=5){toast('Bereits 5 Spieler – erst einen auswechseln');return;}
+/* Aufstellung: Karte antippen = hervorheben, ✕ = entfernen, ⇄ = tauschen (andere Seite oder Bank) */
+function luMe(){return G_(Math.max(0,ME()));}
+function luClean(){if(UI.luSel&&(!UI.lu||UI.lu.indexOf(UI.luSel)<0)){UI.luSel=null;UI.luSwap=false;}}
+function luAddErr(me,s,id){
+  const p=DB[id].pos;
+  if(isInj(me,id)&&healthy(me).length>=5)return 'Verletzt – nicht einsatzfähig';
+  if(s.length>=5)return 'Bereits 5 Spieler – erst einen auswechseln';
   const req=lineupReq(me),slack=5-Object.keys(req).reduce((a,q)=>a+req[q],0);
   const extras=Object.keys(CFG.NEED).reduce((a,q)=>a+Math.max(0,cnt(s,q)-CFG.NEED[q]),0);
-  if(cnt(s,p)>=CFG.NEED[p]&&extras>=slack){toast(`${POS_NAME[p]}-Position ist schon voll`);return;}
-  if(lineupCost(s.concat(id))>capOf(me)){toast(`Zu teuer – die Starting 5 dürfen max. ${capOf(me)} Mio kosten`);return;}
+  if(cnt(s,p)>=CFG.NEED[p]&&extras>=slack)return `${POS_NAME[p]}-Position ist schon voll`;
+  if(lineupCost(s.concat(id))>capOf(me))return `Zu teuer – die Starting 5 dürfen max. ${capOf(me)} Mio kosten`;
+  return '';
+}
+function luSlot(ar,i,p,g){
+  const id=ar[i];if(!id)return `<div class="cs"><div class="empty">${p}</div><div class="lab mut"></div></div>`;
+  const on=UI.luSel===id,tg=!!(UI.luSwap&&UI.luSel&&UI.luSel!==id&&DB[id].pos===DB[UI.luSel].pos);
+  const xs='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+  return `<div class="cs"><div class="luw"><div class="cw${on?' lu-on':''}${tg?' lu-tgt':''}" onclick="luTap('${id}')">${cardHTML(id,g,{mini:1})}</div>${on?`<button class="lu-b lu-x" onclick="luRemove()" aria-label="Aus der Starting 5 nehmen">${xs}</button><button class="lu-b lu-s${UI.luSwap?' on':''}" onclick="luSwapBtn()" aria-label="Tauschen">${icSVG('swap')}</button>`:''}</div><div class="lab mut">${DB[id].pos}</div></div>`;
+}
+function luListLabel(){
+  if(!UI.luSel)return 'Kader – tippen zum Ein-/Auswechseln';
+  const n=esc(DB[UI.luSel].name);
+  return UI.luSwap?`Tauschen: ${n} – tippe die andere Seite oder einen Bankspieler`:`${n} ausgewählt – tippe einen Bankspieler zum Einwechseln`;
+}
+function luRowCls(g,sel,id){if(sel.indexOf(id)>-1)return 'on';if(isInj(g,id))return 'off';return UI.luSel?'lu-tg':'';}
+function luTap(id){
+  const sel=UI.luSel;
+  if(sel&&UI.luSwap&&sel!==id){luSwapCourt(sel,id);return;}
+  if(sel===id){UI.luSel=null;UI.luSwap=false;}else{UI.luSel=id;UI.luSwap=false;}
+  render();
+}
+function luRemove(){const id=UI.luSel;if(!id)return;UI.luSel=null;UI.luSwap=false;UI.lu=UI.lu.filter(x=>x!==id);render();}
+function luSwapBtn(){if(!UI.luSel)return;UI.luSwap=!UI.luSwap;render();}
+function luSwapCourt(a,b){
+  UI.luSel=null;UI.luSwap=false;
+  if(DB[a].pos!==DB[b].pos){toast('Auf dem Feld nur Spieler gleicher Position tauschen');render();return;}
+  const ar=arrange(UI.lu),i=ar.indexOf(a),j=ar.indexOf(b);ar[i]=b;ar[j]=a;UI.lu=ar.filter(Boolean);render();
+}
+function luBench(id){
+  const sel=UI.luSel,s=UI.lu;
+  if(s.indexOf(id)>-1){if(sel&&UI.luSwap&&id!==sel){luSwapCourt(sel,id);return;}luToggle(id);return;}
+  if(!sel){luToggle(id);return;}
+  const me=luMe(),k=s.indexOf(sel),e=luAddErr(me,s.filter(x=>x!==sel),id);
+  if(e){toast(e.indexOf('Position')>-1?`Passt nicht – hier wird ein ${POS_NAME[DB[sel].pos]} gebraucht`:e);return;}
+  const n=s.slice();n[k]=id;UI.lu=n;UI.luSel=null;UI.luSwap=false;render();toast(`${DB[id].name} kommt für ${DB[sel].name}`);
+}
+function luToggle(id){
+  const me=luMe(),s=UI.lu;UI.luSel=null;UI.luSwap=false;
+  if(s.indexOf(id)>-1){UI.lu=s.filter(x=>x!==id);render();return;}
+  const e=luAddErr(me,s,id);if(e){toast(e);render();return;}
   UI.lu=s.concat(id);render();
+}
+function luAutoSheet(){
+  const cur=UI.luStyle||'bal';
+  const o=(k,ic,t,d)=>`<button class="item lu-opt${cur===k?' on':''}" data-act="${k}"><span class="lu-oi">${icSVG(ic)}</span><div class="grow"><div class="b">${t}</div><div class="s mut">${d}</div></div>${cur===k?'<span class="b" style="color:var(--acc)">✓</span>':''}</button>`;
+  openSheet(`<div class="h2" style="margin-bottom:4px">Automatisch aufstellen</div><div class="s mut" style="margin-bottom:12px">Worauf soll die Starting 5 ausgelegt sein? Gehaltsgrenze und Positionen werden eingehalten.</div><div class="col">
+${o('off','swords','Offensiv','Die besten Angreifer – Shooting und Driving')}
+${o('bal','sliders','Ausgeglichen','Die beste Gesamtwertung (OVR)')}
+${o('def','shield','Defensiv','Die besten Verteidiger – Perimeter Def und Zone Def')}
+<button class="btn sec" data-act="x">Schließen</button></div>`,{off:()=>luAuto('off'),bal:()=>luAuto('bal'),def:()=>luAuto('def'),x:closeSheet});
+}
+function luAuto(st){
+  UI.luStyle=st;closeSheet();UI.lu=autoLineup(luMe(),st);UI.luSel=null;UI.luSwap=false;render();
+  toast({off:'Offensive Aufstellung',bal:'Ausgeglichene Aufstellung',def:'Defensive Aufstellung'}[st]);
 }
 function simFromLineup(){
   const me=G_(0),md=ST.sched[ST.md],my=md.games.find(x=>x.h===0||x.a===0);
@@ -2488,17 +2564,17 @@ function oHub(){
 }
 function oLineup(k){
   const md=curMd(),me=ME(),g=G_(me),G=md.games[k],opp=G.h===me?G.a:G.h,O=G_(opp),key=ST.season+':'+ST.md;
-  if(!UI.lu||UI.luKey!==key){UI.lu=autoLineup(g);UI.luKey=key;}
+  if(!UI.lu||UI.luKey!==key){UI.lu=autoLineup(g,UI.luStyle);UI.luKey=key;UI.luSel=null;UI.luSwap=false;}
   UI.lu=UI.lu.filter(id=>g.roster.indexOf(id)>-1);
   const sel=UI.lu,ok=lineupValid(g,sel),ar=arrange(sel),cost=lineupCost(sel),cap=capOf(g);
-  const slot=(i,p)=>`<div class="cs">${ar[i]?`<div class="cw" onclick="luToggle('${ar[i]}')">${cardHTML(ar[i],g,{mini:1})}</div>`:`<div class="empty">${p}</div>`}<div class="lab mut">${ar[i]?DB[ar[i]].pos:''}</div></div>`;
+  luClean();const slot=(i,p)=>luSlot(ar,i,p,g);
   app(`<button class="btn sec sm" onclick="UI.view=null;render()">← Spieltag</button><div class="mt">${phaseHead(md.label,'Aufstellung',`2 Guards, 2 Forwards, 1 Center – zusammen höchstens ${cap} Mio.`)}</div>
 <div class="item mt">${badge(me)}<div class="grow"><div class="b">Du${G.h===me?' (Heim)':''}</div><div class="s mut">${g.w}–${g.l}</div></div><div class="b mut">vs</div><div class="grow" style="text-align:right"><div class="b">${esc(O.name)}${G.h===opp?' (Heim)':''}</div><div class="s mut">${O.w}–${O.l}</div></div>${badge(opp)}</div>
 <button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
 <div class="court"><div class="crow">${[2,4,3].map(i=>slot(i,['G','G','F','F','C'][i])).join('')}</div><div class="crow">${[0,1].map(i=>slot(i,'G')).join('')}</div></div>
 <div class="row wrap mt">${needChips(sel)}<span class="chip">${sel.length}/5</span><span class="chip ${cost>cap?'bad':'ok'}">💰 ${cost}/${cap} Mio</span></div>
-<div class="panel"><div class="lbl">Kader – tippen zum Ein-/Auswechseln</div><div class="col">${sortRoster(g).map(id=>pRow(me,id,{cls:sel.indexOf(id)>-1?'on':(isInj(g,id)?'off':''),click:`luToggle('${id}')`})).join('')}</div></div>
-<div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="UI.lu=autoLineup(G_(ME()));render()">Auto</button>${isBot(opp)?`<button class="btn sec" ${UI.pending?'disabled':''} onclick="act('sim',{g:${k},ids:UI.lu.slice()})">Simulieren</button>`:''}<button class="btn" ${ok&&!UI.pending?'':'disabled'} onclick="act('lineup',{g:${k},ids:UI.lu.slice()});UI.view=null">Aufstellung bestätigen</button></div></div>`);
+<div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(g).map(id=>pRow(me,id,{cls:luRowCls(g,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
+<div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${isBot(opp)?`<button class="btn sec" ${UI.pending?'disabled':''} onclick="act('sim',{g:${k},ids:UI.lu.slice()})">Simulieren</button>`:''}<button class="btn" ${ok&&!UI.pending?'':'disabled'} onclick="act('lineup',{g:${k},ids:UI.lu.slice()});UI.view=null">Aufstellung bestätigen</button></div></div>`);
 }
 function nSlot(G,k,side,i){
   const m=G.m,e=m.c[side][i];if(!e)return '<div class="cs"></div>';
@@ -3457,10 +3533,53 @@ function cardZoom(id,gi,withDetails){
   const g=(gi===null||gi===undefined)?null:G_(gi);let z=document.getElementById('czoom');
   if(!z){z=document.createElement('div');z.id='czoom';z.className='czoom';document.body.appendChild(z);}
   z.innerHTML=`<div class="cz-card">${cardHTML(id,g)}</div><div class="cz-bar">${withDetails?`<button class="btn sec sm" id="cz-det">Werte & Details</button>`:''}<span class="s mut">Tippen zum Schließen</span></div>`;
-  z.classList.remove('out');z.classList.add('on');
+  z.classList.remove('out');z.classList.add('on');navSoon();
   z.onclick=e=>{if(e.target.closest('#cz-det')){cardZoomClose();cardSheet(id,gi);return;}cardZoomClose();};
 }
-function cardZoomClose(){const z=document.getElementById('czoom');if(!z)return;z.classList.add('out');setTimeout(()=>{z.classList.remove('on','out');z.innerHTML='';},180);}
+function cardZoomClose(){const z=document.getElementById('czoom');if(!z)return;z.classList.add('out');setTimeout(()=>{z.classList.remove('on','out');z.innerHTML='';navSoon();},180);}
+
+/* ═════════════ ZURÜCK-TASTE (Handy) ═════════════
+   Zurück wischen/drücken geht eine Ebene zurück. Im Hauptmenü schließt die App. */
+function navZoomOn(){const z=document.getElementById('czoom');return !!(z&&z.classList.contains('on'));}
+function navRoot(){return !ST&&!NET.on&&(!UI.screen||UI.screen==='title'||UI.screen==='menu')&&$('sheet').classList.contains('hidden')&&!navZoomOn();}
+function navSync(){
+  try{
+    const want=!navRoot();
+    if(want&&!NAV.armed){history.pushState({tp:1},'');NAV.armed=true;}
+    else if(!want&&NAV.armed){NAV.armed=false;NAV.skip++;history.back();}
+  }catch(e){}
+}
+function navSoon(){clearTimeout(NAV.t);NAV.t=setTimeout(navSync,30);}
+function navTwice(k,msg){const now=Date.now();if(NAV.warnK===k&&now-NAV.warnAt<2600){NAV.warnK='';return true;}NAV.warnK=k;NAV.warnAt=now;toast(msg);return false;}
+function navBack(){
+  if(navZoomOn()){cardZoomClose();return;}
+  const ar=$('arena');if(ar&&!ar.classList.contains('hidden'))return;   // Duell-Animation läuft
+  if(!$('sheet').classList.contains('hidden')){if(!UI.shLock)closeSheet();return;}
+  if(UI.spin)return;                                                      // Lotterie dreht
+  if(UI.luSel){UI.luSel=null;UI.luSwap=false;render();return;}
+  if(!ST){const sc=UI.screen||'title';if(sc==='upboard'){screen('up');return;}if(sc!=='title'&&sc!=='menu')screen('menu');return;}
+  if(NET.on){
+    if(UI.sel){UI.sel=null;render();return;}
+    if(UI.view){UI.view=null;render();return;}
+    if(UI.tab&&UI.tab!=='md'){UI.tab='md';render();return;}
+    if(NET.host&&ST.phase!=='lobby'&&!navTwice('host','Nochmal zurück: Das Spiel pausiert für alle, bis du zurückkommst'))return;
+    leaveOnline();return;
+  }
+  if(ST.phase==='match'&&UI.m){
+    if(UI.m.phase==='def'&&UI.m.myTurn){cancelAtk();return;}
+    if(!navTwice('match','Nochmal zurück: Das laufende Spiel wird abgebrochen'))return;
+    toMenuOffline();return;
+  }
+  if(ST.phase==='lineup'){UI.lu=null;UI.luSel=null;UI.luSwap=false;ST.phase=ST.mode==='up'?'up_hub':'hub';window.scrollTo(0,0);render();return;}
+  if(ST.phase==='hub'&&UI.tab!=='md'){UI.tab='md';render();return;}
+  toMenuOffline();
+}
+window.addEventListener('popstate',()=>{
+  if(NAV.skip>0){NAV.skip--;return;}
+  NAV.armed=false;
+  try{navBack();}catch(e){console.warn(e);}
+  navSoon();
+});
 
 /* ═════════════ VIEWS & START ═════════════ */
 const VIEWS={up_draft:vUpDraft,up_hub:vUpHub,up_reward:vUpReward,up_shop:vUpShop,up_over:vUpOver,start:vStart,dice:vDice,captain:vCaptain,fa:vFA,draft:vDraft,hub:vHub,lineup:vLineup,match:vMatch,events:vEvents,season:vSeason,champion:vChampion,trade:vTrade,release:vRelease};

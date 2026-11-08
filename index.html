@@ -944,7 +944,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 42</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 43</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -1471,13 +1471,19 @@ function vLineup(){
   luClean();const slot=i=>luSlot(sel,i,me);
   app(`${phaseHead(md.label,'Aufstellung',luHead(cap))}
 <div class="item mt">${badge(0)}<div class="grow"><div class="b">Du${my.h===0?' (Heim)':''}</div><div class="s mut">${me.w}–${me.l}</div></div><div class="b mut">vs</div><div class="grow" style="text-align:right"><div class="b">${esc(O.name)}${my.a===0?' (Heim)':''}</div><div class="s mut">${O.w}–${O.l}</div></div>${badge(opp)}</div>
-<button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
+${ST.mode==='up'?'':scoutPanel(opp)}<button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
 <div class="court"><div class="crow">${[2,4,3].map(slot).join('')}</div><div class="crow">${[0,1].map(slot).join('')}</div></div>
 <div class="row wrap mt">${luChips(sel,cost,cap)}</div>
 <div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(me).map(id=>pRow(0,id,{cls:luRowCls(me,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${ST.mode==='up'?'':'<button class="btn sec" onclick="simFromLineup()">Simulieren</button>'}<button class="btn" ${ok?'':'disabled'} onclick="enterMatch()">Spiel starten</button></div></div>`);
 }
 /* Aufstellung: Karte antippen = hervorheben, ✕ = entfernen, ⇄ = tauschen (anderer Platz oder Bank) */
+/* Scouting-Bericht: die 3 stärksten einsatzfähigen Spieler des Gegners */
+function scoutPanel(gi){
+  const O=G_(gi),h=healthy(O),pool=(h.length>=5?h:O.roster).slice().sort((a,b)=>rating(O,b)-rating(O,a)).slice(0,3);
+  if(!pool.length)return '';
+  return `<div class="panel"><div class="lbl">Scouting-Bericht <span>Top 3 von ${O.roster.length} Spielern</span></div><div class="grid4" style="grid-template-columns:repeat(3,1fr)">${pool.map(id=>`<div class="cw" onclick="cardSheet('${id}',${gi})">${cardHTML(id,O,{mini:1})}</div>`).join('')}</div></div>`;
+}
 function luMe(){return G_(Math.max(0,ME()));}
 function luClean(){if(UI.luSel&&(!UI.lu||UI.lu.indexOf(UI.luSel)<0)){UI.luSel=null;UI.luSwap=false;}}
 function luErr(me,lu,id){
@@ -2640,7 +2646,7 @@ function oLineup(k){
   luClean();const slot=i=>luSlot(sel,i,g);
   app(`<button class="btn sec sm" onclick="UI.view=null;render()">← Spieltag</button><div class="mt">${phaseHead(md.label,'Aufstellung',luHead(cap))}</div>
 <div class="item mt">${badge(me)}<div class="grow"><div class="b">Du${G.h===me?' (Heim)':''}</div><div class="s mut">${g.w}–${g.l}</div></div><div class="b mut">vs</div><div class="grow" style="text-align:right"><div class="b">${esc(O.name)}${G.h===opp?' (Heim)':''}</div><div class="s mut">${O.w}–${O.l}</div></div>${badge(opp)}</div>
-<button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
+${scoutPanel(opp)}<button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
 <div class="court"><div class="crow">${[2,4,3].map(slot).join('')}</div><div class="crow">${[0,1].map(slot).join('')}</div></div>
 <div class="row wrap mt">${luChips(sel,cost,cap)}</div>
 <div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(g).map(id=>pRow(me,id,{cls:luRowCls(g,sel,id),click:`luBench('${id}')`})).join('')}</div></div>

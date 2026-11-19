@@ -187,11 +187,12 @@ button.chip{cursor:pointer;padding:7px 11px}
 /* ── Menü-Hintergrund: Spielfeld + Blitze ── */
 #mbg{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity .35s;background-color:#0a0f1e;background-image:var(--mbg-grain,none),radial-gradient(120% 80% at 50% 35%,#13204a 0%,#0c1430 45%,#0a0f1e 100%);background-repeat:repeat,no-repeat}
 #mbg.on{opacity:1}
-#mbg svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-#mbg:after{content:'';position:absolute;inset:0;background:radial-gradient(75% 75% at 50% 40%,rgba(10,15,30,0) 55%,rgba(5,8,15,.85) 100%)}
-#mbg .ln{fill:none;stroke:rgba(225,236,255,.055);stroke-width:.5;stroke-linecap:round}
-#mbg .bolt{fill:none;stroke:#fff;stroke-width:1.1;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20}
-#mbg .boltH{fill:none;stroke:#a9cbff;stroke-width:3.5;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20;opacity:0}
+#mbg svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:0;transform:perspective(1020px) rotateX(50deg) rotateY(50deg);transform-origin:50% 25%}
+#mbg:before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(225deg,rgba(5,8,16,.92) 0%,rgba(5,8,16,.55) 22%,rgba(5,8,16,0) 52%);opacity:.75}
+#mbg:after{content:'';position:absolute;inset:0;z-index:1;background:radial-gradient(75% 75% at 50% 40%,rgba(10,15,30,0) 55%,rgba(5,8,15,.85) 100%)}
+#mbg .ln{fill:none;stroke:rgba(225,236,255,.12);stroke-width:.286;stroke-linecap:round}
+#mbg .bolt{fill:none;stroke:#fff;stroke-width:.629;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20}
+#mbg .boltH{fill:none;stroke:#a9cbff;stroke-width:2;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20;opacity:0}
 body.mbg-on{background:transparent}
 .mcard{background:color-mix(in srgb,var(--mbg) 88%,transparent)}
 .menu-head .t-name[data-t]:after{content:attr(data-t);position:absolute;inset:0;color:transparent;-webkit-text-fill-color:transparent;text-shadow:none;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%) no-repeat;background-size:40% 100%;background-position:-60% 0;-webkit-background-clip:text;background-clip:text;pointer-events:none}
@@ -1107,21 +1108,21 @@ ${typeof langSwitchHTML==='function'?langSwitchHTML():''}`);
 /* ═════════════ MENÜ-HINTERGRUND: Spielfeld mit Lichtblitzen ═════════════ */
 const MBG={el:null,run:false,n:0,T:null};
 const MBG_R=[
- {d:"M263 30 V145.6 A140 140 0 0 1 81.8 185.2",t:1,ms:900},
- {d:"M37 30 V145.6 A140 140 0 0 0 81.8 185.2",t:1,ms:800},
- {d:"M22 325 H119 A31 31 0 0 1 181 325 H278 V30 H263 V145.6 A140 140 0 0 1 81.8 185.2",t:1,ms:1500},
- {d:"M22 325 H278",ms:550},
- {d:"M278 620 V30",ms:800},
- {d:"M22 30 V620",ms:800},
+ {d:"M263 30 V145.6 A140 140 0 0 1 136.2 202.3",t:1,ms:900},
+ {d:"M37 30 V145.6 A140 140 0 0 0 136.2 202.3",t:1,ms:800},
+ {d:"M22 325 H119 A31 31 0 0 1 181 325 H278 V30 H263 V145.6 A140 140 0 0 1 136.2 202.3",t:1,ms:1500},
+ {d:"M22 325 H278",ms:600},
+ {d:"M119 325 A31 31 0 0 1 181 325 A31 31 0 0 1 119 325",ms:650},
+ {d:"M22 30 H278",ms:600},
  {d:"M109 30 V149 H191 V30",ms:650},
- {d:"M119 325 A31 31 0 0 1 181 325 A31 31 0 0 1 119 325",ms:600}];
+ {d:"M37 30 V145.6 A140 140 0 0 0 263 145.6 V30",ms:900}];
 function mbgBuild(){
   if(MBG.el)return MBG.el;const d=document.createElement('div');d.id='mbg';d.setAttribute('aria-hidden','true');
   const L=(x)=>x.replace(/<(rect|line|circle|path)/g,'<$1 class="ln"');
   d.innerHTML=`<svg viewBox="0 0 300 650" preserveAspectRatio="xMidYMid meet"><defs>
-<filter id="mbg-gl" filterUnits="userSpaceOnUse" x="-300" y="-300" width="900" height="1300"><feGaussianBlur stdDeviation=".65" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-<filter id="mbg-gl2" filterUnits="userSpaceOnUse" x="-300" y="-300" width="900" height="1300"><feGaussianBlur stdDeviation="2"/></filter></defs>
-<g transform="translate(35,475) rotate(45) scale(2) translate(-150,-325)"><g>${L(`<rect x="22" y="30" width="256" height="590" rx="2"/><line x1="22" y1="325" x2="278" y2="325"/><circle cx="150" cy="325" r="31"/><circle cx="150" cy="325" r="10"/>
+<filter id="mbg-gl" filterUnits="userSpaceOnUse" x="-300" y="-300" width="900" height="1300"><feGaussianBlur stdDeviation=".371" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="mbg-gl2" filterUnits="userSpaceOnUse" x="-300" y="-300" width="900" height="1300"><feGaussianBlur stdDeviation="1.143"/></filter></defs>
+<g transform="translate(250,459) scale(3.5) translate(-150,-325)"><g>${L(`<rect x="22" y="30" width="256" height="590" rx="2"/><line x1="22" y1="325" x2="278" y2="325"/><circle cx="150" cy="325" r="31"/>
 <rect x="109" y="30" width="82" height="119"/><path d="M119 149 A31 31 0 0 0 181 149"/><path d="M119 149 A31 31 0 0 1 181 149" stroke-dasharray="5 5"/><path d="M37 30 V145.6 A140 140 0 0 0 263 145.6 V30"/>
 <line x1="135" y1="55" x2="165" y2="55"/><circle cx="150" cy="63" r="5"/><path d="M129.5 63 A20.5 20.5 0 0 0 170.5 63"/>
 <rect x="109" y="501" width="82" height="119"/><path d="M119 501 A31 31 0 0 1 181 501"/><path d="M119 501 A31 31 0 0 0 181 501" stroke-dasharray="5 5"/><path d="M37 620 V504.4 A140 140 0 0 1 263 504.4 V620"/>
@@ -1175,7 +1176,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 56</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 57</div></div>`);
 }
 /* ═════════════ KONTO (freiwillig, Firebase Auth) ═════════════ */
 const ACC={grant:null,user:null,p:null,busy:false,syncAt:0,pushT:null,needName:false,askedName:false,loaded:false};

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -60,6 +60,10 @@ button.chip{cursor:pointer;padding:7px 11px}
 .teams{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .teamb{display:flex;align-items:center;gap:8px;padding:9px;border-radius:12px;border:1px solid var(--ln);background:var(--p2);cursor:pointer;text-align:left;font-size:12px;font-weight:800;line-height:1.2}
 .die{font-size:30px;width:38px;text-align:center}
+.langsw{display:flex;gap:6px;justify-content:center;margin:18px auto 4px;padding:4px;border:1px solid var(--ln);border-radius:999px;width:max-content;background:rgba(255,255,255,.03)}
+.langsw button{font:inherit;font-weight:800;font-size:13px;color:var(--sub);background:none;border:0;border-radius:999px;padding:7px 16px;cursor:pointer}
+.langsw button.on{background:var(--acc);color:#0a0f1e}
+.panel .langsw{margin:2px 0 0}
 .code{font-size:42px;font-weight:900;letter-spacing:.3em;color:var(--acc);margin:4px 0;font-variant-numeric:tabular-nums}
 .dots i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--sub);margin:0 2px;animation:bl 1.2s infinite}
 .dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
@@ -817,6 +821,7 @@ ${act?`<div class="s b" style="color:${col}">ANGREIFEN ▸</div>`:''}
 <div class="col mt">${acts}<button class="btn sec" data-act="x">Schließen</button></div>`,h);
 }
 function menuSheet(){
+  if(NET.on&&ST&&ST.mode==='jb'){jbMenuSheet();return;}
   if(NET.on){openSheet(`<div class="h2" style="margin-bottom:12px">Menü</div><div class="col">
 <div class="item"><div class="grow"><div class="b">🌐 Raum ${esc(NET.code)}</div><div class="s mut">${NET.host?'Du bist Host. Lass die App geöffnet, sonst stoppt das Spiel für alle.':'Host: '+esc(hostName())}</div></div></div>
 <button class="btn sec" data-act="k">📋 Mein Kader</button><button class="btn sec" data-act="r">📖 Spielregeln</button>
@@ -899,6 +904,7 @@ window.addEventListener('resize',()=>requestAnimationFrame(fitCourt));
 function render(){navSoon();audSync();applyTheme();setTimeout(()=>requestAnimationFrame(fitCourt),0);const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();}
 function seasonLabel(){
   const p=ST.phase;if(ST.mode==='up')return 'Ultimate Pick · Stufe '+ST.up.stage;
+  if(ST.mode==='jb')return 'Jump Ball'+(ST.jb&&ST.jb.round>1?' · Runde '+ST.jb.round:'');
   if(p==='dice'||p==='captain'||p==='pre_done')return 'Preseason';
   if(p==='fa')return ST.fa&&ST.fa.mode==='season'?'Offseason':'Preseason';
   if(p==='draft')return ST.dr&&ST.dr.mode==='season'?'Offseason':'Preseason';
@@ -914,7 +920,7 @@ function renderHeader(){
   if(!ST||k<0||ST.phase==='lobby'){h.style.display='none';h.innerHTML='';return;}
   const me=G_(k),t=TEAMS[me.team];h.style.display='block';
   h.innerHTML=`<div class="in"><div class="htop">${badge(k)}<div class="grow"><div class="tn">${esc(t.name)}</div><div class="ts">${esc(me.name)} · ${seasonLabel()}</div></div><span class="chip hcap">💰 Cap ${capOf(me)}</span><button class="ib" onclick="menuSheet()">☰</button></div>
-<div class="hst">${NET.on?`<span class="chip ${UI.pending?'bad':'acc'}">${UI.pending?'⏳ wird übertragen':(NET.host?'🌐 Host':'🌐 Online')} · ${esc(NET.code)}</span>`:''}${ST.mode==='up'?`<span class="chip acc">⚡ Stufe ${ST.up.stage}</span><span class="chip">🏆 ${fmtPts(ST.up.score)}</span><span class="chip">✅ ${ST.up.wins}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">🎟 ${me.trade}</span>`:`<span class="chip">💍 ${me.rings}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">💰 Cap ${capOf(me)}</span><span class="chip">🎟 ${me.trade}</span><span class="chip">🎱 ${me.picks}</span>${me.ringHolder?'<span class="chip ok">Ringträger</span>':''}`}</div></div>`;
+<div class="hst">${NET.on?`<span class="chip ${UI.pending?'bad':'acc'}">${UI.pending?'⏳ wird übertragen':(NET.host?'🌐 Host':'🌐 Online')} · ${esc(NET.code)}</span>`:''}${ST.mode==='jb'?`<span class="chip">👥 ${me.roster.length}/${JB.PICKS}</span><span class="chip">💰 Cap ${capOf(me)}</span>`:ST.mode==='up'?`<span class="chip acc">⚡ Stufe ${ST.up.stage}</span><span class="chip">🏆 ${fmtPts(ST.up.score)}</span><span class="chip">✅ ${ST.up.wins}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">🎟 ${me.trade}</span>`:`<span class="chip">💍 ${me.rings}</span><span class="chip">👥 ${me.roster.length}/${CFG.ROSTER_MAX}</span><span class="chip">💰 Cap ${capOf(me)}</span><span class="chip">🎟 ${me.trade}</span><span class="chip">🎱 ${me.picks}</span>${me.ringHolder?'<span class="chip ok">Ringträger</span>':''}`}</div></div>`;
 }
 
 /* ═════════════ START ═════════════ */
@@ -929,22 +935,25 @@ function vMenu(){
 ${sl?b('▶️','#34d399','Fortsetzen',`${esc(sl.name)} · Saison ${sl.season} · 💍 ${sl.rings}`,`loadSlot('${sl.id}')`,'main'):''}
 ${rm?b('🌐','#7dd3fc',(rm.role==='host'?'Raum ':'Raum ')+esc(rm.code)+(rm.role==='host'?' fortsetzen':' wieder beitreten'),rm.role==='host'?'Als Host weiterspielen':'Als '+esc(rm.name||'Gast')+' weiterspielen',`roomGo('${rm.code}')`,'main'):''}
 ${b('🏀','#f7a81b','GM Career','Mehrere Saisons · offline oder online',"careerSheet()",sl||rm||UI.upRun?'':'main')}
+${b('⚔️','#7dd3fc','Jump Ball','Schnelles Online-Match · Draft und Duell',"screen('jb')")}
 ${b('⚡','#f7a81b','Ultimate Pick',UI.upRun?`Run läuft · Stufe ${UI.upRun.up.stage} · ${fmtPts(UI.upRun.up.score)} Punkte`:`Rogue-Modus · Rekord ${UP_HIST.length?fmtPts(UP_HIST[0].score):'–'}`,"screen('up')",UI.upRun?'main':'')}
 ${b('💾','#fbbf24','Spielstände',`${SLOTS.length} offline · ${ROOMS.length} online`,"screen('saves')")}
 ${b('📚','#60a5fa','Kartenalbum','Alle Karten mit ihren Werten',"screen('album')")}
 ${b('📖','#94a3b8','Spielregeln','Kurzfassung des Regelwerks','rulesSheet()')}
-${b('⚙️','#94a3b8','Einstellungen','Animationen, Ton, Credits',"screen('settings')")}`);
+${b('⚙️','#94a3b8','Einstellungen','Sprache, Animationen, Ton, Credits',"screen('settings')")}
+${langSwitchHTML()}`);
 }
 function vSettings(){
   const o=(k,v,l)=>`<button class="${SET[k]===v?'on':''}" onclick="SET.${k}='${v}';applySettings();saveSettings();render()">${l}</button>`;
   app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button>
 <div class="mt">${phaseHead('Menü','Einstellungen','')}</div>
+<div class="panel"><div class="lbl">Sprache</div>${langSwitchHTML()}</div>
 <div class="panel"><div class="lbl">Animationen</div><div class="opt">${o('anim','auto','Automatisch')}${o('anim','on','An')}${o('anim','off','Aus')}</div><div class="s mut" style="margin-top:8px">„Automatisch“ richtet sich nach „Bewegung reduzieren“ auf deinem Gerät.</div></div>
 ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 43</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 44</div></div>`);
 }
 function vAlbum(){
   const f=UI.albumTab||'L',ord={G:0,F:1,C:2},tabs=[['L','Legends'],['S','All-Stars'],['B','Basics'],['R','Rookies']];
@@ -955,7 +964,7 @@ function vAlbum(){
 <div class="row wrap mt"><span class="chip">${ids.length} Karten</span>${['G','F','C'].map(p=>`<span class="chip">${p} ${cnt(ids,p)}</span>`).join('')}</div>
 <div class="grid4 mt">${ids.map(id=>`<div class="cw" style="cursor:pointer" onclick="cardSheet('${id}',null)">${cardHTML(id,null)}</div>`).join('')}</div>`);
 }
-const SCREENS={title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum,saves:vSaves,up:vUp,upboard:vUpBoard};
+const SCREENS={jb:vJb,title:vTitle,menu:vMenu,start:vSetup,online:vOnline,settings:vSettings,album:vAlbum,saves:vSaves,up:vUp,upboard:vUpBoard};
 function vStart(){(SCREENS[UI.screen||'title']||vSetup)();}
 function vSetup(){
   const s=UI.setup,sv_=UI.saved;
@@ -1077,6 +1086,7 @@ function confetti(n){
 /* ── Phasen-Intros ── */
 let introT=null;
 function introFor(prev,ph){
+  if(ST&&ST.mode==='jb'){if(prev===ph)return null;if(ph==='jb_draft')return{k:'Jump Ball',t:'Draft',s:'Jeder wählt '+JB.PICKS+' Spieler · '+JB.T_PICK+' s pro Pick'};if(ph==='hub')return{k:'Jump Ball',t:'Aufstellung',s:JB.T_LU+' s für deine Starting 5'};return null;}
   if(ph==='dice'&&!ST.order.length){const k=Math.max(0,ME());return{k:'Preseason',t:'Willkommen, GM',s:esc(TEAMS[G_(k).team].name)};}
   if(prev===ph)return null;
   if(ph==='hub'){
@@ -1375,7 +1385,7 @@ function gameRow(g){
 }
 function standTable(){
   const s=standings();
-  return `<table class="st"><tr><th>#</th><th>Team <span style="font-weight:600;text-transform:none;letter-spacing:0">· antippen für Kader</span></th><th>S</th><th>N</th><th>Diff</th></tr>${s.map((gi,k)=>{const g=G_(gi),d=g.pf-g.pa;return `<tr class="${gi===ME()?'me':''}" style="cursor:pointer" onclick="teamSheet(${gi})"><td>${k+1}</td><td><div class="row">${badge(gi)}<div style="min-width:0"><div class="b" style="font-size:13px">${gname(gi)}</div><div class="s mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">${esc(tname(gi))}</div></div></div></td><td>${g.w}</td><td>${g.l}</td><td>${d>0?'+':''}${d}</td></tr>`;}).join('')}</table>
+  return `<table class="st"><tr><th>#</th><th>Team <span style="font-weight:600;text-transform:none;letter-spacing:0">· antippen für Kader</span></th><th>${isEN()?'W':'S'}</th><th>${isEN()?'L':'N'}</th><th>Diff</th></tr>${s.map((gi,k)=>{const g=G_(gi),d=g.pf-g.pa;return `<tr class="${gi===ME()?'me':''}" style="cursor:pointer" onclick="teamSheet(${gi})"><td>${k+1}</td><td><div class="row">${badge(gi)}<div style="min-width:0"><div class="b" style="font-size:13px">${gname(gi)}</div><div class="s mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">${esc(tname(gi))}</div></div></div></td><td>${g.w}</td><td>${g.l}</td><td>${d>0?'+':''}${d}</td></tr>`;}).join('')}</table>
 <div class="s mut" style="margin-top:10px">💍 Ringe: ${ST.order.map(i=>`${gname(i)} ${G_(i).rings}`).join(' · ')}</div>`;
 }
 function injuryNote(g){
@@ -1644,7 +1654,7 @@ function applySettings(){RM=SET.anim==='off'?true:(SET.anim==='on'?false:SYS_RM)
 function saveSettings(){kvSet('toppick_settings',JSON.stringify(SET));}
 (async function(){const v=await kvGet('toppick_settings');if(v){try{const o=JSON.parse(v);Object.assign(SET,o);
   if(!o.musV2){if(o.music!=null)SET.music=Math.min(100,Math.round(+o.music/.3/5)*5);SET.musV2=1;saveSettings();}   // Musik-Regler umgerechnet: gleiche Lautstärke wie vorher
-  applySettings();}catch(e){}}})();
+  applySettings();if(SET.lang==='de'){document.documentElement.lang='de';if(typeof render==='function')render();}}catch(e){}}})();
 function arClear(){(UI.arT||[]).forEach(clearTimeout);UI.arT=[];}
 function arAt(ms,fn){(UI.arT=UI.arT||[]).push(setTimeout(fn,ms));}
 function slotRect(k){const e=document.querySelector(`[data-slot="${k}"]`);return e?e.getBoundingClientRect():null;}
@@ -2055,7 +2065,7 @@ function othersOf(gi){return humans().filter(i=>i!==gi);}
 function isHostP(pid){return !!(ST&&ST.net&&pid===ST.net.host);}
 function hostName(){if(!ST||!ST.net)return '';const g=(ST.gms||[]).find(x=>x.pid===ST.net.host);if(g)return g.name;const p=ST.net.lobby.players.find(x=>x.pid===ST.net.host);return p?p.name:'';}
 function genCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=A[rint(0,A.length-1)];return s;}
-function netStop(){NET.unsub.forEach(u=>{try{u();}catch(e){}});NET.unsub=[];clearTimeout(NET.botT);clearTimeout(NET.tmT);Object.values(NET.bk||{}).forEach(clearTimeout);NET.bk={};}
+function netStop(){NET.unsub.forEach(u=>{try{u();}catch(e){}});NET.unsub=[];clearTimeout(NET.botT);clearTimeout(NET.tmT);clearInterval(NET.jbq);clearTimeout(NET.jbJ);Object.values(NET.bk||{}).forEach(clearTimeout);NET.bk={};}
 function dbFatal(e){const c=e&&e.code;return ['invalid_argument','not_granted','quota_exceeded','revoked','capability_disabled','capability_removed','transform_error'].indexOf(c)>-1;}
 function dbErrText(e){const c=e&&e.code;
   if(c==='invalid_argument'||c==='not_granted')return 'Keine Schreibrechte: Der Besitzer des Artifacts muss dich als Editor einladen.';
@@ -2100,6 +2110,7 @@ function hostListen(){
       (Array.isArray(b.acts)?b.acts:[]).filter(a=>a&&a.id>ack).sort((x,y)=>x.id-y.id).forEach(a=>{
         apply(ST.gms.findIndex(g=>g.pid===pid),a.t,a.d||{},pid);ST.net.ack[pid]=a.id;changed=true;});
     });
+    if(ST.mode==='jb'&&ST.phase==='lobby'&&ST.net.lobby.players.length>=2){jbStart();changed=true;}
     if(changed)commitNet();
   },e=>toast(dbErrText(e))));
 }
@@ -2191,10 +2202,12 @@ function hostTimers(){
     if(!ST||!NET.on||!NET.host||!ST.tm||ST.tm.id!==t.id)return;
     if(t.key==='dice'){ST.tm=null;ST.gms.forEach((g,i)=>{if(!g.roll)H.roll_me(i,{});});}
     else if(t.key==='rdy')nextPhase();
+    else if(t.key==='jb')jbTimeout(t.ref);
     commitNet();
   },Math.max(0,t.until-Date.now())+150);
 }
 function hostAuto(){
+  if(ST.mode==='jb'){jbHostAuto();return;}
   if(ST.rdy&&humans().every(i=>ST.rdy.done.indexOf(i)>-1))nextPhase();
   if(ST.phase==='dice'&&!ST.order.length&&(!ST.tm||ST.tm.key!=='dice'))setTimer('dice',15);
   let need=null;
@@ -2273,7 +2286,7 @@ function newGM(name,team,pid,uid,bot){return{name:name,team:team,pid:pid,uid:uid
 function lobbyJoin(pid,b){
   const L=ST.net.lobby;
   if(b.left){const k=L.players.findIndex(x=>x.pid===pid&&pid!==ST.net.host);if(k<0)return false;L.players.splice(k,1);return true;}
-  if(L.players.some(x=>x.pid===pid)||L.players.length>=6)return false;
+  if(L.players.some(x=>x.pid===pid)||L.players.length>=(ST.mode==='jb'?2:6))return false;
   if(b.name==null)return false;
   const used=L.players.map(x=>x.team);let t=b.team|0;if(t<0||t>5||used.indexOf(t)>-1)t=[0,1,2,3,4,5].find(x=>used.indexOf(x)<0);
   L.players.push({pid:pid,uid:String(b.uid||''),name:String(b.name||'Gast').slice(0,14),team:t});L.n=Math.max(L.n,L.players.length);return true;
@@ -2293,6 +2306,7 @@ H.claim=(gi,d,pid)=>{if(ST.phase==='lobby'||ST.closed||ST.gms.some(g=>g.pid===pi
   if(g.bot){g.bot=false;g.name=String((NET.names&&NET.names[pid])||'Gast').slice(0,14);g.pid=pid;g.uid=NET.uids[pid]||'';fx('msg',g.name+' übernimmt '+TEAMS[g.team].name,othersOf(k));return;}
   g.pid=pid;if(NET.uids[pid])g.uid=NET.uids[pid];fx('msg',g.name+' ist wieder dabei',othersOf(k));};
 H.quit=(gi,d,pid)=>{
+  if(ST.mode==='jb'&&ST.phase!=='lobby'){if(gi<0||isBot(gi))return;const g=G_(gi);fx('msg',g.name+' hat das Match verlassen',othersOf(gi));g.bot=true;g.pid=null;g.uid='';g.name='🤖 '+g.name;return;}
   if(ST.phase==='lobby'){if(!isHostP(pid)){const L=ST.net.lobby;L.players=L.players.filter(x=>x.pid!==pid);}return;}
   if(gi<0||isBot(gi))return;const g=G_(gi);fx('msg',g.name+' hat das Spiel verlassen – ein KI-Manager übernimmt',othersOf(gi));g.bot=true;g.pid=null;g.uid='';g.name='🤖 '+g.name;};
 H.roll=(gi,d,pid)=>{
@@ -2354,6 +2368,7 @@ function botTick(){
   else if(ph==='captain'){const c=ST.cap;if(c.turn<ST.gms.length){const gi=ST.order[c.turn];if(isBot(gi))run(gi,'cap',{i:rint(0,c.pool.length-1)},1100);}}
   else if(ph==='fa'){const gi=faCur();if(gi>=0&&isBot(gi)){const id=botFAChoice(gi);run(gi,id?'fa_sign':'fa_skip',id?{id:id}:{},900);}}
   else if(ph==='hub')botHub();
+  else if(ph==='jb_draft'){const gi=jbCur();if(gi>=0&&isBot(gi))run(gi,'jb_pick',{id:jbAutoPick(gi)},1300);}
   else if(ph==='draft'){const r=ST.dr;if(r&&!r.setup){
     if(r.cur>=0&&isBot(r.cur)){const id=botDraftChoice(r.cur);run(r.cur,id?'dr_take':'dr_skip',id?{id:id}:{},2800);}
     else if(r.cur<0){const rem=r.balls.filter(x=>r.order.indexOf(x)<0);if(rem.length&&rem.every(isBot))run(-1,'draw',{},1800);}}}
@@ -2480,7 +2495,7 @@ function forceGame(k){
   if(G.st==='live'){let h=G.m.sH,a=G.m.sA;while(h<3&&a<3){if(Math.random()<.5)h++;else a++;}G.hs=h;G.as=a;}else simGame(G);
   G.sim=1;G.st='done';fx('msg','Spiel '+G_(G.h).name+' – '+G_(G.a).name+' wurde vom Host simuliert ('+G.hs+':'+G.as+')');maybeComplete();
 }
-function maybeComplete(){const md=curMd();if(md&&!md.done&&md.games.every(g=>g.st==='done'||g.st==='auto'))completeMdNet();}
+function maybeComplete(){const md=curMd();if(md&&!md.done&&md.games.every(g=>g.st==='done'||g.st==='auto')){if(ST.mode==='jb')jbFinish();else completeMdNet();}}
 function completeMdNet(){
   const md=curMd();if(!md||md.done)return;
   md.games.forEach(G=>{
@@ -2644,11 +2659,11 @@ function oLineup(k){
   luNorm(g);
   const sel=UI.lu,ok=lineupValid(g,sel),cost=lineupCost(sel),cap=capOf(g);
   luClean();const slot=i=>luSlot(sel,i,g);
-  app(`<button class="btn sec sm" onclick="UI.view=null;render()">← Spieltag</button><div class="mt">${phaseHead(md.label,'Aufstellung',luHead(cap))}</div>
+  app(`${ST.mode==='jb'?'':'<button class="btn sec sm" onclick="UI.view=null;render()">← Spieltag</button>'}<div class="mt">${phaseHead(md.label,'Aufstellung',luHead(cap))}</div>
 <div class="item mt">${badge(me)}<div class="grow"><div class="b">Du${G.h===me?' (Heim)':''}</div><div class="s mut">${g.w}–${g.l}</div></div><div class="b mut">vs</div><div class="grow" style="text-align:right"><div class="b">${esc(O.name)}${G.h===opp?' (Heim)':''}</div><div class="s mut">${O.w}–${O.l}</div></div>${badge(opp)}</div>
 ${scoutPanel(opp)}<button class="btn sec mt" onclick="teamSheet(${opp})">👀 Gegner ansehen: ${esc(O.name)}</button>
 <div class="court"><div class="crow">${[2,4,3].map(slot).join('')}</div><div class="crow">${[0,1].map(slot).join('')}</div></div>
-<div class="row wrap mt">${luChips(sel,cost,cap)}</div>
+<div class="row wrap mt">${ST.mode==='jb'&&cdHTML()?`<span class="chip acc">⏳ ${cdHTML()}</span>`:''}${luChips(sel,cost,cap)}</div>
 <div class="panel"><div class="lbl">${luListLabel()}</div><div class="col">${sortRoster(g).map(id=>pRow(me,id,{cls:luRowCls(g,sel,id),click:`luBench('${id}')`})).join('')}</div></div>
 <div class="cta"><div class="in"><button class="btn sec" style="flex:.55" onclick="luAutoSheet()">Auto</button>${isBot(opp)?`<button class="btn sec" ${UI.pending?'disabled':''} onclick="act('sim',{g:${k},ids:UI.lu.slice()})">Simulieren</button>`:''}<button class="btn" ${ok&&!UI.pending?'':'disabled'} onclick="act('lineup',{g:${k},ids:UI.lu.slice()});UI.view=null">Aufstellung bestätigen</button></div></div>`);
 }
@@ -2682,6 +2697,7 @@ function oMatch(k){
   if(UI.pending)hint='⏳ Wird übertragen …';
   else if(myTurn)hint=UI.sel?'Ziel wählen: tippe einen gegnerischen Spieler':(m.first?'Du greifst zuerst an: tippe einen <b>Guard</b> und wähle die Attacke':'Dein Angriff: tippe einen Spieler und wähle die Attacke');
   else hint=`${esc(O.name)} ist am Zug …`;
+  if(ST.mode==='jb'&&!UI.pending&&cdHTML())hint+=` · ⏳ ${cdHTML()}`;
   const aw=s==='a'?{gi:me,nm:'Du',t:tm,sc:m.sA}:{gi:opp,nm:esc(O.name),t:to,sc:m.sA},hm=s==='h'?{gi:me,nm:'Du',t:tm,sc:m.sH}:{gi:opp,nm:esc(O.name),t:to,sc:m.sH};
   app(`<div class="scoreb">
 <div class="row" style="cursor:pointer" onclick="teamSheet(${aw.gi})">${badge(aw.gi)}<div><div class="b s">${aw.nm}</div><div class="s mut">${aw.t.sh} · Auswärts</div></div></div>
@@ -2696,7 +2712,7 @@ function oMatch(k){
 <div class="crow">${[2,4,3].map(i=>nSlot(G,k,s,i)).join('')}</div>
 <div class="crow">${[0,1].map(i=>nSlot(G,k,s,i)).join('')}</div>
 <div class="hl">${hlPh(tm)}${esc(tm.name)}</div></div>
-<div class="hint"><div class="in"><div class="grow">${hint}</div>${UI.sel?'<button class="btn sec sm" onclick="UI.sel=null;render()">Zurück</button>':''}<button class="btn sec sm" onclick="UI.view=\'hub\';UI.sel=null;render()">Spieltag</button></div></div>`);
+<div class="hint"><div class="in"><div class="grow">${hint}</div>${UI.sel?'<button class="btn sec sm" onclick="UI.sel=null;render()">Zurück</button>':''}${ST.mode==='jb'?'':'<button class="btn sec sm" onclick="UI.view=\'hub\';UI.sel=null;render()">Spieltag</button>'}</div></div>`);
 }
 function oEvents(){
   const md=curMd(),me=ME(),ev=ST.ev||{list:[]},mine=ev.list.find(e=>e.gi===me),E=id=>EVENTS.find(x=>x.id===id);
@@ -2909,7 +2925,7 @@ function oConfirmBet(){
 }
 
 const OVIEWS={lobby:oLobby,dice:oDice,captain:oCaptain,fa:oFA,draft:oDraft,pre_done:oPreDone,hub:oHub,events:oEvents,trade_mid:oTradeMid,season_end:oSeasonEnd,trade:oTrade,release:oRelease,season:oSeasonRes,champion:oChampion};
-function oClosed(){app(`${phaseHead('Online','Spiel beendet','Der Host hat das Spiel in Raum '+esc(NET.code)+' beendet.')}<div class="cta"><div class="in"><button class="btn" onclick="forgetRoom();leaveOnline()">Zum Hauptmenü</button></div></div>`);}
+function oClosed(){if(ST&&ST.mode==='jb'){app(`${phaseHead('Jump Ball','Match beendet','Dein Gegner hat das Match verlassen.')}<div class="cta"><div class="in"><button class="btn" onclick="leaveOnline()">Zum Hauptmenü</button></div></div>`);return;}app(`${phaseHead('Online','Spiel beendet','Der Host hat das Spiel in Raum '+esc(NET.code)+' beendet.')}<div class="cta"><div class="in"><button class="btn" onclick="forgetRoom();leaveOnline()">Zum Hauptmenü</button></div></div>`);}
 function forgetRoom(){if(UI.joined&&UI.joined.code===NET.code)UI.joined=null;if(UI.hosting===NET.code)UI.hosting=null;roomDel(NET.code);}
 function startSheet(){
   {const _m=cardsCheck(Math.max(ST.net.lobby.n,ST.net.lobby.players.length));if(_m.length){toast('Zu wenige Karten – es fehlen '+_m.join(', '));return;}}
@@ -2938,8 +2954,231 @@ function toMenuOffline(){
 function renderOnline(){
   if(!ST){oConnecting();return;}
   if(ST.closed){oClosed();return;}
+  if(ST.mode==='jb'){jbRender();return;}
   if(ST.phase!=='lobby'&&ME()<0){oClaim();return;}
   (OVIEWS[ST.phase]||oPreDone)();
+}
+
+
+/* ═════════════ JUMP BALL (schnelles Online-Match) ═════════════
+   Zwei Spieler: Gegner per Code oder zufällig über eine Warteschlange (Dokument tp/JBQUEUE).
+   Schlangen-Draft aus 30 offenen Karten (3 Legends), jeder wählt 10 Spieler, dann Aufstellung und ein Best-of-5.
+   Timer nur hier: 20 s pro Pick, 60 s Aufstellung, 30 s pro Angriff. Rematch, wenn beide zustimmen. */
+const JB={L:3,S:9,B:12,R:6,PICKS:10,T_PICK:20,T_LU:60,T_ATK:30,Q_FRESH:22000,Q_BEAT:7000};
+const JBQ='tp/JBQUEUE';
+function jbCardsMiss(){const m=[];if(IDS('L').length<JB.L)m.push(JB.L+' Legends');if(IDS('S').length+IDS('B').length<JB.S+JB.B)m.push((JB.S+JB.B)+' All-Stars oder Basics');if(IDS('R').length<JB.R)m.push(JB.R+' Rookies');return m;}
+function jbPool(){
+  const take=(a,n)=>shuffle(a).slice(0,n),ord={Legend:0,'All-Star':1,Basic:2,Rookie:3};let best=null;
+  for(let t=0;t<60;t++){
+    const L=take(IDS('L'),JB.L),S=take(IDS('S'),JB.S),B=take(IDS('B'),JB.B),R=take(IDS('R'),JB.R);
+    let p=L.concat(S,B,R);const fill=shuffle(IDS('S').concat(IDS('B')).filter(id=>p.indexOf(id)<0));while(p.length<JB.L+JB.S+JB.B+JB.R&&fill.length)p.push(fill.shift());
+    best=p;if(cnt(p,'G')>=7&&cnt(p,'F')>=7&&cnt(p,'C')>=4)break;
+  }
+  return best.sort((a,b)=>ord[DB[a].tier]-ord[DB[b].tier]||rating(null,b)-rating(null,a));
+}
+function jbCur(){const j=ST&&ST.jb;return j&&ST.phase==='jb_draft'&&j.picks.length<j.order.length?j.order[j.picks.length]:-1;}
+function jbStart(){
+  const L=ST.net.lobby;ST.gms=L.players.slice(0,2).map(p=>newGM(p.name,p.team,p.pid,p.uid,false));
+  ST.cards=cardsSnapshot();ST.jb.score=[0,0];ST.jb.round=0;if(ST.jb.q)jbQueueClear();jbNewRound();
+}
+function jbNewRound(){
+  const j=ST.jb;j.round++;j.re={};j.res=null;j.picks=[];
+  ST.gms.forEach(g=>{g.roster=[];g.inj={};g.buffs=[];g.up={};g.lastLu=null;g.luCustom=null;g.w=0;g.l=0;});
+  j.pool=jbPool();j.first=rint(0,1);const a=j.first,b=1-a;j.order=[];
+  for(let r=0;r<JB.PICKS;r++){if(r%2===0)j.order.push(a,b);else j.order.push(b,a);}
+  ST.sched=[{label:'Jump Ball',stage:'J',games:[{h:b,a:a,hs:null,as:null}]}];ST.md=0;ST.tm=null;ST.phase='jb_draft';
+  fx('msg',G_(a).name+' wählt zuerst – '+G_(b).name+' hat dafür Heimvorteil');
+}
+H.jb_pick=(gi,d)=>{
+  if(ST.mode!=='jb'||ST.phase!=='jb_draft'||jbCur()!==gi)return;const j=ST.jb,i=j.pool.indexOf(d.id);if(i<0)return;
+  j.pool.splice(i,1);G_(gi).roster.push(d.id);j.picks.push({gi:gi,id:d.id});
+  fx('msg',G_(gi).name+' draftet '+DB[d.id].name,othersOf(gi));
+  if(j.picks.length>=j.order.length){ST.tm=null;ST.phase='hub';initMd();}
+};
+H.jb_re=(gi)=>{
+  if(ST.mode!=='jb'||ST.phase!=='jb_over'||gi<0||isBot(gi))return;ST.jb.re[gi]=1;
+  const hs=humans();if(hs.length===2&&hs.every(i=>ST.jb.re[i]))jbNewRound();else fx('msg',G_(gi).name+' möchte ein Rematch',othersOf(gi));
+};
+function jbAutoPick(gi){
+  const g=G_(gi),miss=missingPos(g.roster),hasL=g.roster.some(id=>DB[id].tier==='Legend');
+  return ST.jb.pool.map(id=>({id:id,s:rating(null,id)+(miss.indexOf(DB[id].pos)>-1?8:0)-(hasL&&DB[id].tier==='Legend'?20:0)+Math.random()*2})).sort((a,b)=>b.s-a.s)[0].id;
+}
+function jbFinish(){
+  const md=curMd(),G=md.games[0];if(md.done)return;md.done=1;
+  if(G.hs==null)simGame(G);
+  const w=G.hs>G.as?G.h:G.a,log=(G.m&&G.m.log)||G.log||[];ST.jb.score[w]=(ST.jb.score[w]||0)+1;
+  ST.jb.res={h:G.h,a:G.a,hs:G.hs,as:G.as,w:w,log:log};G.log=log;G.m=null;G.st='done';ST.tm=null;ST.phase='jb_over';
+}
+function jbTimer(ref,dur){if(!ST.tm||ST.tm.key!=='jb'||ST.tm.ref!==ref){setTimer('jb',dur);ST.tm.ref=ref;}}
+function jbHostAuto(){
+  ST.rdy=null;const j=ST.jb;
+  if(ST.phase==='jb_draft'){jbTimer('p'+j.round+':'+j.picks.length,JB.T_PICK);return;}
+  if(ST.phase==='hub'){const md=curMd(),G=md&&md.games[0];if(!G||md.done){ST.tm=null;return;}
+    if(G.st==='open')netLineupCheck(G);
+    if(G.st==='open'){jbTimer('l'+j.round,JB.T_LU);return;}
+    if(G.st==='live'){jbTimer('a'+j.round+':'+G.m.log.length,JB.T_ATK+(G.m.log.length?4:0));return;}
+    maybeComplete();}
+  if(ST.tm&&ST.tm.key==='jb')ST.tm=null;
+}
+function jbTimeout(ref){
+  ST.tm=null;const j=ST.jb;if(!j)return;
+  if(ST.phase==='jb_draft'&&ref==='p'+j.round+':'+j.picks.length){const gi=jbCur();if(gi>=0){H.jb_pick(gi,{id:jbAutoPick(gi)});if(!isBot(gi))fx('msg','Zeit abgelaufen – es wurde automatisch gewählt',[gi]);}return;}
+  if(ST.phase!=='hub')return;const G=curMd().games[0];if(!G)return;
+  if(G.st==='open'&&ref==='l'+j.round){
+    ['h','a'].forEach(sd=>{if(G.rd[sd])return;const gi=sd==='h'?G.h:G.a,g=G_(gi);G['l'+sd]=arrange(luRestore(g,g.lastLu,'bal')).filter(Boolean);G.rd[sd]=1;if(!isBot(gi))fx('msg','Zeit abgelaufen – deine Aufstellung wurde automatisch gesetzt',[gi]);});
+    netLineupCheck(G);return;}
+  if(G.st==='live'&&ref==='a'+j.round+':'+G.m.log.length){const gi=G.m.turn==='h'?G.h:G.a;if(!isBot(gi))fx('msg','Zeit abgelaufen – automatischer Angriff',[gi]);H.attack(gi,Object.assign({g:0},botMove(G)));}
+}
+
+/* ── Räume & Warteschlange ── */
+function jbName(){const n=(UI.net.name||'').trim().slice(0,14);if(!n)toast('Bitte gib deinen Namen ein');return n;}
+function jbReady(){if(NET.status!=='ok'){toast('Online ist hier nicht verfügbar');return false;}const m=jbCardsMiss();if(m.length){toast('Zu wenige Karten – es fehlen '+m.join(', '));return false;}return true;}
+async function jbCreate(q){
+  if(!jbReady())return;const name=jbName();if(!name)return;
+  UI.busy=true;render();let code='';
+  try{for(let i=0;i<5&&!code;i++){const c=genCode();const d=await NET.db.doc('tp/'+c).get();if(!d.exists)code=c;}}
+  catch(e){UI.busy=false;toast(dbErrText(e));render();return;}
+  UI.busy=false;if(!code){toast('Kein freier Code – bitte nochmal versuchen');render();return;}
+  netStop();NET.code=code;NET.on=true;NET.host=true;NET.uids={};
+  ST={v:3,mode:'jb',phase:'lobby',season:1,gms:[],order:[],decks:{L:[],FA:[],R:[]},sched:[],md:0,ev:null,fx:[],fxs:0,ver:0,
+    net:{code:code,host:NET.pid,hostUid:NET.uid||'',ack:{},lobby:{n:2,players:[{pid:NET.pid,uid:NET.uid||'',name:name,team:UI.net.team|0}]}},
+    jb:{q:!!q,round:0,score:[0,0],re:{},pool:[],order:[],picks:[],first:0,res:null}};
+  UI.fxSeen=0;UI.fxQ=[];UI.fxBusy=false;UI.lastPhase=null;UI.jbQ=false;
+  hostListen();commitNet();
+  if(q){jbQueueBeat();NET.jbq=setInterval(jbQueueBeat,JB.Q_BEAT);}
+}
+async function jbSearch(){
+  if(!jbReady())return;if(!jbName())return;
+  UI.busy=true;render();let v=null;
+  try{const d=await NET.db.doc(JBQ).get();v=d.exists?d.data():null;}catch(e){}
+  UI.busy=false;
+  if(v&&v.code&&v.pid!==NET.pid&&Date.now()-(v.at||0)<JB.Q_FRESH&&(UI.jbSkip||[]).indexOf(v.code)<0){jbJoin(v.code,true);return;}
+  jbCreate(true);
+}
+/* Herzschlag des Wartenden: Steht schon jemand anderes in der Schlange, tritt der mit dem größeren Code dem kleineren bei. */
+async function jbQueueBeat(){
+  if(!NET.on||!NET.host||!ST||ST.mode!=='jb'||ST.phase!=='lobby'||!ST.jb.q)return;
+  let v=null;try{const d=await NET.db.doc(JBQ).get();v=d.exists?d.data():null;}catch(e){return;}
+  if(!NET.on||!NET.host||!ST||ST.phase!=='lobby')return;
+  const fresh=v&&v.code&&v.code!==NET.code&&v.pid!==NET.pid&&Date.now()-(v.at||0)<JB.Q_FRESH&&(UI.jbSkip||[]).indexOf(v.code)<0;
+  if(fresh&&v.code<NET.code&&ST.net.lobby.players.length<2){const c=v.code;ST.closed=true;await publish();netStop();NET.on=false;NET.host=false;ST=null;jbJoin(c,true);return;}
+  NET.db.doc(JBQ).set({code:NET.code,pid:NET.pid,at:Date.now()}).catch(()=>{});
+}
+async function jbQueueClear(){try{const d=await NET.db.doc(JBQ).get();const v=d.exists?d.data():null;if(v&&v.code===NET.code)await NET.db.doc(JBQ).set({code:null,pid:'',at:0});}catch(e){}}
+async function jbJoin(code,fromQ){
+  code=String(code||UI.net.code||'').trim().toUpperCase();const name=(UI.net.name||'').trim();
+  if(!name||!code){toast('Bitte Name und Code eingeben');return;}
+  if(NET.status!=='ok'){toast('Online ist hier nicht verfügbar');return;}
+  UI.busy=true;render();let d;
+  try{d=await NET.db.doc('tp/'+code).get();}catch(e){UI.busy=false;toast(dbErrText(e));render();return;}
+  UI.busy=false;
+  let s=null;if(d.exists){try{s=JSON.parse(d.data().s);}catch(e){}}
+  if(!s||s.closed){if(fromQ){jbRetry(code);return;}toast('Match '+code+' nicht gefunden');render();return;}
+  if(s.mode!=='jb'){toast('Das ist ein Code für GM Career – tritt ihm unter „Online“ bei');render();return;}
+  netStop();NET.code=code;NET.on=true;NET.host=false;NET.ver=-1;NET.out=[];NET.seq=Date.now();NET.claimVer=null;NET.left=false;
+  ST=null;UI.lastPhase=null;UI.fxQ=[];UI.fxBusy=false;UI.pending=false;UI.jbQ=!!fromQ;
+  render();guestListen();sendInbox();
+  if(fromQ)NET.jbJ=setTimeout(()=>{if(NET.on&&!NET.host&&UI.jbQ&&NET.code===code&&(!ST||ME()<0))jbRetry(code);},9000);
+}
+function jbRetry(code){
+  UI.jbSkip=(UI.jbSkip||[]).concat(code).slice(-10);
+  if(NET.on){if(!NET.host&&ST&&ST.phase==='lobby'){NET.left=true;sendInbox();}netStop();NET.on=false;NET.host=false;ST=null;}
+  jbSearch();
+}
+function jbCancel(){if(NET.host&&ST&&ST.jb&&ST.jb.q)jbQueueClear();if(NET.host)quitOnline();else leaveOnline();}
+function jbLeave(){quitOnline();}
+function jbQuitAsk(){
+  openSheet(`<div style="font-size:44px;text-align:center">🚪</div><div class="h2" style="text-align:center">Match verlassen?</div><div class="sub mt" style="text-align:center">${NET.host?'Das Match endet für beide.':'Den Rest des Matches spielt die KI für dich.'}</div><div class="col mt"><button class="btn bad" data-act="y">Ja, verlassen</button><button class="btn sec" data-act="x">Abbrechen</button></div>`,{y:()=>{closeSheet();quitOnline();},x:closeSheet});
+}
+function jbMenuSheet(){
+  openSheet(`<div class="h2" style="margin-bottom:12px">Jump Ball</div><div class="col">
+<div class="item"><div class="grow"><div class="b">🌐 Match ${esc(NET.code)}</div><div class="s mut">${NET.host?'Lass die App geöffnet, sonst stoppt das Match.':'Gegner: '+esc(hostName())}</div></div></div>
+${ST.phase!=='lobby'&&ME()>=0?'<button class="btn sec" data-act="k">📋 Mein Kader</button>':''}<button class="btn sec" data-act="r">📖 So läuft Jump Ball</button>
+<button class="btn bad" data-act="q">Match verlassen</button><button class="btn sec" data-act="x">Schließen</button></div>`,{k:rosterSheet,r:jbRulesSheet,q:jbQuitAsk,x:closeSheet});
+}
+function jbRulesHTML(){return `<div>• Ihr seid zu zweit, jeder auf seinem Gerät. Den Gegner findest du zufällig oder per Code.</div>
+<div>• <b style="color:var(--fg)">Draft:</b> 30 Karten liegen offen, darunter ${JB.L} Legends. Ihr wählt abwechselnd im Schlangen-System (A, B, B, A …), bis jeder ${JB.PICKS} Spieler hat. ${JB.T_PICK} Sekunden pro Pick.</div>
+<div>• Wer zuerst wählt, spielt auswärts. Der andere hat Heimvorteil und greift zuerst an.</div>
+<div>• <b style="color:var(--fg)">Aufstellung:</b> ${JB.T_LU} Sekunden. Es gelten die normalen Regeln: höchstens ${CFG.CAP} Mio für die Starting 5, fremde Position −${CFG.OOP}.</div>
+<div>• <b style="color:var(--fg)">Spiel:</b> ein Best-of-5 mit ${JB.T_ATK} Sekunden pro Angriff.</div>
+<div>• Läuft eine Zeit ab, wählt, stellt auf oder greift das Spiel automatisch für dich an.</div>
+<div>• Danach: Rematch, wenn beide zustimmen, sonst zurück ins Menü.</div>`;}
+function jbRulesSheet(){openSheet(`<div class="h2">So läuft Jump Ball</div><div class="col mt s" style="line-height:1.6;color:var(--sub)">${jbRulesHTML()}</div><button class="btn sec mt" data-act="x">Schließen</button>`,{x:closeSheet});}
+
+/* ── Ansichten ── */
+function vJb(){
+  const n=UI.net,st=NET.status,dis=(st!=='ok'||UI.busy)?'disabled':'',miss=jbCardsMiss();
+  let banner='';
+  if(st==='wait')banner='<div class="panel"><div class="row"><div class="dots"><i></i><i></i><i></i></div><div class="s mut">Verbindung zum Online-Server wird hergestellt …</div></div></div>';
+  else if(st==='none')banner=`<div class="panel" style="border-color:rgba(251,113,133,.5)"><div class="b" style="color:var(--bad)">Online ist hier nicht verfügbar</div><div class="s mut" style="margin-top:6px;line-height:1.55">${NET.why==='fb'?'Firebase konnte nicht verbunden werden.':'In dieser Version fehlen die Firebase-Daten.'}</div></div>`;
+  else if(NET.canWrite===false)banner='<div class="panel" style="border-color:rgba(251,191,36,.5)"><div class="b" style="color:var(--warn)">Nur Leserechte</div><div class="s mut" style="margin-top:6px;line-height:1.55">Mit deinem Zugang kannst du keine Züge senden.</div></div>';
+  if(miss.length)banner+=`<div class="panel" style="border-color:rgba(251,113,133,.5)"><div class="b" style="color:var(--bad)">Zu wenige Karten</div><div class="s mut" style="margin-top:6px">Es fehlen ${miss.join(', ')}.</div></div>`;
+  app(`<button class="btn sec sm" onclick="screen('menu')">← Menü</button>
+<div class="mt">${phaseHead('Online','Jump Ball','Schnelles Match zu zweit: gemeinsamer Draft aus 30 Karten, jeder wählt '+JB.PICKS+' Spieler, dann ein Best-of-5.')}</div>${banner}
+<div class="panel"><div class="lbl">Dein Name</div><input class="inp" maxlength="14" value="${esc(n.name)}" oninput="UI.net.name=this.value" placeholder="Name"></div>
+<div class="panel"><div class="lbl">Dein Team</div>${teamPicker(n.team,'netTeam')}</div>
+<div class="panel"><div class="lbl">Zufälliger Gegner</div><div class="s mut mb">Du wirst mit dem nächsten Spieler verbunden, der ebenfalls sucht.</div><button class="btn ok" ${dis} onclick="jbSearch()">${UI.busy?'Einen Moment …':'⚔️ Gegner suchen'}</button></div>
+<div class="panel"><div class="lbl">Gegen einen Freund</div><button class="btn" ${dis} onclick="jbCreate(false)">Match erstellen</button>
+<div class="s mut" style="margin:12px 0 6px">oder mit Code beitreten</div><input class="inp" maxlength="5" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.25em;text-align:center;font-size:20px" value="${esc(n.code)}" oninput="UI.net.code=this.value" placeholder="CODE"><button class="btn sec mt" ${dis} onclick="jbJoin()">Beitreten</button></div>
+<div class="panel"><div class="lbl">So läuft's</div><div class="col s" style="line-height:1.6;color:var(--sub)">${jbRulesHTML()}</div></div>`);
+}
+function jbRender(){
+  if(ST.phase==='lobby'){oJbLobby();return;}
+  if(ME()<0){oJbFull();return;}
+  ({jb_draft:oJbDraft,hub:oJbHub,jb_over:oJbOver}[ST.phase]||oJbOver)();
+}
+function oJbLobby(){
+  const L=ST.net.lobby,me=L.players.find(p=>p.pid===NET.pid),q=ST.jb.q;
+  let body;
+  if(NET.host&&q)body=`${phaseHead('Jump Ball','Gegner wird gesucht …','Sobald jemand anderes sucht, geht es los. Lass die App so lange geöffnet.')}
+<div class="panel" style="text-align:center"><div class="row" style="justify-content:center;gap:12px;padding:14px 0"><div class="dots"><i></i><i></i><i></i></div><div class="b">Suche läuft</div></div><div class="s mut">Ein Freund kann auch direkt mit dem Code beitreten:</div><div class="code" style="font-size:28px">${ST.net.code}</div></div>`;
+  else if(NET.host)body=`${phaseHead('Jump Ball','Warte auf deinen Gegner','Schick deinem Freund den Code. Er öffnet Jump Ball und tritt damit bei – das Match startet automatisch.')}
+<div class="panel" style="text-align:center"><div class="lbl" style="justify-content:center">Match-Code</div><div class="code">${ST.net.code}</div><button class="btn sec sm mt" onclick="copyCode()">📋 Code kopieren</button></div>
+<div class="panel"><div class="row"><div class="dots"><i></i><i></i><i></i></div><div class="s mut">Warte auf den zweiten Spieler …</div></div></div>`;
+  else body=`${phaseHead('Jump Ball','Match '+esc(ST.net.code),'')}<div class="panel"><div class="row"><div class="dots"><i></i><i></i><i></i></div><div class="s mut">${me?'Gleich geht es los …':'Dein Beitritt wird bestätigt …'}</div></div></div>`;
+  app(`${body}<div class="cta"><div class="in"><button class="btn sec" onclick="jbCancel()">Abbrechen</button></div></div>`);
+}
+function oJbFull(){
+  if(UI.jbQ){const c=NET.code;setTimeout(()=>{if(NET.on&&NET.code===c&&!NET.host&&ST&&ME()<0)jbRetry(c);},0);}
+  app(`${phaseHead('Jump Ball','Match '+esc(NET.code),'Dieses Match ist bereits voll.')}<div class="cta"><div class="in"><button class="btn" onclick="leaveOnline()">Zum Hauptmenü</button></div></div>`);
+}
+function jbPickTap(i){
+  const j=ST.jb,id=j.pool[i],me=ME();if(!id)return;const nav=cNav(j.pool,i,jbPickTap);
+  if(jbCur()!==me||UI.pending){cardSheet(id,null,{nav:nav});return;}
+  cardSheet(id,null,{nav:nav,actions:[{label:`Draften · ${DB[id].sal} Mio`,cls:'ok',fn:()=>{closeSheet();act('jb_pick',{id:id});}}]});
+}
+function jbTeamPanel(gi,title){
+  const g=G_(gi),ids=sortRoster(g);
+  return `<div class="panel"><div class="lbl">${title} <span>${ids.length}/${JB.PICKS}</span></div><div class="row wrap" style="margin-bottom:8px">${needChips(ids)}</div>${ids.length?`<div class="col">${ids.map(id=>pRow(gi,id,{click:`cardSheet('${id}',${gi})`})).join('')}</div>`:'<div class="s mut">Noch keine Spieler</div>'}</div>`;
+}
+function oJbDraft(){
+  const j=ST.jb,me=ME(),opp=1-me,cur=jbCur(),mine=cur===me&&!UI.pending,n=j.picks.length;
+  const home=curMd().games[0].h===me;
+  app(`${phaseHead('Jump Ball · Draft',`Pick ${Math.min(n+1,j.order.length)} von ${j.order.length}`,home?'Du hast Heimvorteil und greifst im Spiel zuerst an.':'Du hast den ersten Pick, spielst dafür auswärts.')}
+${cur>=0?turnBanner(cur,(cur===me?'Wähle einen Spieler':'wählt einen Spieler …')+(cdHTML()?' · ⏳ '+cdHTML():'')):''}
+<div class="row wrap mt">${needChips(G_(me).roster)}<span class="chip">👥 ${G_(me).roster.length}/${JB.PICKS}</span></div>
+<div class="grid4 mt">${j.pool.map((id,i)=>`<div class="cw ${mine?'sel':''}" onclick="jbPickTap(${i})">${cardHTML(id,null)}</div>`).join('')}</div>
+${jbTeamPanel(me,'Dein Team')}${jbTeamPanel(opp,esc(G_(opp).name))}`);
+}
+function oJbHub(){
+  const md=curMd(),G=md&&md.games[0],me=ME();if(!G){oJbOver();return;}
+  const s=sideOf(G,me),opp=s==='h'?G.a:G.h;
+  if(G.st==='live'){oMatch(0);return;}
+  if(G.st==='open'&&!G.rd[s]){oLineup(0);return;}
+  app(`${phaseHead('Jump Ball','Aufstellung steht','')}
+<div class="panel"><div class="row"><div class="dots"><i></i><i></i><i></i></div><div class="s mut">Warte auf die Aufstellung von ${esc(G_(opp).name)}${cdHTML()?' · ⏳ '+cdHTML():''}</div></div></div>
+${jbTeamPanel(me,'Dein Team')}`);
+}
+function oJbOver(){
+  const j=ST.jb,r=j.res,me=ME();
+  if(!r){app(`${phaseHead('Jump Ball','Einen Moment …','')}`);return;}
+  const ms=me===r.h?'h':'a',opp=ms==='h'?r.a:r.h,my=ms==='h'?r.hs:r.as,op=ms==='h'?r.as:r.hs,win=my>op,O=G_(opp),left=isBot(opp),voted=!!j.re[me],oVoted=!!j.re[opp];
+  app(`${phaseHead('Jump Ball'+(j.round>1?' · Runde '+j.round:''),win?'Sieg!':'Niederlage','gegen '+esc(O.name))}
+<div class="panel" style="text-align:center"><div class="wl ${win?'w':'l'}">${win?'W':'L'}</div><div style="font-size:40px;font-weight:900;color:${win?'var(--ok)':'var(--bad)'}">${my} : ${op}</div>
+<div class="row" style="justify-content:center;margin-top:8px"><span class="chip acc">Serie · Du ${j.score[me]||0} : ${j.score[opp]||0} ${esc(O.name)}</span></div></div>
+<div class="panel"><div class="lbl">Duelle</div><div class="col">${(r.log||[]).map((l,k)=>`<div class="item"><div class="b" style="width:18px">${k+1}</div><div class="grow s"><b>${esc(DB[l.a].name)}</b> ${STAT_ICON[l.k]} ${l.av} vs ${l.dv} <b>${esc(DB[l.d].name)}</b></div><span class="chip ${l.w===ms?'ok':'bad'}">${l.w===ms?'Du':esc(O.name)}</span></div>`).join('')||'<div class="s mut">Das Spiel wurde simuliert.</div>'}</div></div>
+${left?`<div class="panel"><div class="sub">${esc(O.name.replace(/^🤖 /,''))} hat das Match verlassen.</div></div>`:(oVoted&&!voted?`<div class="panel" style="border-color:rgba(52,211,153,.5)"><div class="b" style="color:var(--ok)">${esc(O.name)} möchte ein Rematch</div></div>`:'')}
+<div class="cta"><div class="in"><button class="btn sec" onclick="jbLeave()">🏠 Menü</button>${left?'':`<button class="btn ok" ${voted||UI.pending?'disabled':''} onclick="act('jb_re')">${voted?'⏳ Warte auf '+esc(O.name):'🔁 Rematch'}</button>`}</div></div>`);
 }
 
 /* ═════════════ AUDIO: Musik & Soundeffekte ═════════════ */
@@ -3161,7 +3400,7 @@ function slotMeta(id,s,name){const g=s.gms[0];return{id:id,name:name||TEAMS[g.te
 function slotsSave(){kvSet('tp_slots',JSON.stringify(SLOTS));}
 function slotTouch(id,s){const m=SLOTS.find(x=>x.id===id);if(!m||!s||!s.gms||!s.gms.length)return;const g=s.gms[0];Object.assign(m,{team:g.team,season:s.season,rings:g.rings,n:s.gms.length,phase:s.phase,at:Date.now()});SLOTS.sort((a,b)=>b.at-a.at);slotsSave();}
 function slotDel(id){SLOTS=SLOTS.filter(x=>x.id!==id);kvDel(slotKey(id));slotsSave();}
-function fmtAt(t){try{return new Date(t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+function fmtAt(t){try{return new Date(t).toLocaleString(isEN()?'en-US':'de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
 async function slotsLoad(){
   try{const v=await kvGet('tp_slots');SLOTS=v?JSON.parse(v):[];}catch(e){SLOTS=[];}
   if(!Array.isArray(SLOTS))SLOTS=[];
@@ -3304,7 +3543,57 @@ function iconText(t){
   if(last<s.length)f.appendChild(document.createTextNode(s.slice(last)));
   p.replaceChild(f,t);
 }
-if(window.MutationObserver){new MutationObserver(ms=>{ms.forEach(m=>{if(m.type==='characterData')iconText(m.target);else m.addedNodes.forEach(iconize);});}).observe(document.body,{childList:true,subtree:true,characterData:true});}
+
+/* ═════════════ SPRACHE: Englisch (Standard) · Deutsch (umschaltbar im Menü) ═════════════
+   Der Quelltext ist deutsch. Bei Englisch übersetzt diese Schicht jeden sichtbaren Text, sobald er ins Dokument kommt.
+   Neue Texte: Eintrag in I18N.sub (Teilstring, mit Wortgrenzen) oder I18N.exact (nur ganzer Text);
+   Satzbau mit Platzhaltern über I18N.pre (vor dem Wörterbuch) bzw. I18N.post (Zahlen & Einheiten, danach). */
+const I18N={"exact":{"Du":"You","Du!":"You!","An":"On","Aus":"Off","Gast":"Guest","Mensch":"human","Menschen":"humans","KI":"AI","Ringe":"Rings","Siege":"Wins","Stufe":"Stage","Runde":"Round","Spieler":"Players","Spiel":"Game","Karten":"Cards","Kugel":"ball","Kugeln":"balls","Raum":"Room","Gruppe":"Group","Frei":"Free","Eigenes":"Custom","Alle":"All","Mit":"With","Als":"As","Ohne":"Without","Sprache":"Language","Deine":"Your","Ja,":"Yes,","Lade":"Loading","Bereit":"Ready","Danach:":"Then:","Ziel:":"Goal:","Spiel:":"Game:","Saison:":"Season:","Spiele:":"Games:","Ende:":"End:","Punkte:":"Points:","Belohnung:":"Reward:","Kaderumbau:":"Roster rebuild:","Ringträger:":"Ring holder:","Aufstellung:":"Lineup:","Gegner:":"Opponent:","Zeile":"Row","Mio":"M","MIO":"M","Fertig":"Done","Weiter":"Continue","Zurück":"Back"},"sub":{"Verletzung":"Injury","Ein zufälliger Spieler fällt das nächste Spiel aus.":"A random player misses the next game.","Schwere Verletzung":"Serious injury","Red Cross: Ein zufälliger Spieler fällt 3 Spiele aus.":"Red Cross: a random player misses 3 games.","Ein Rookie, der gespielt hat, steigt einen Stern auf: alle Werte +3 (max. 3 Sterne).":"A rookie who played gains a star: all stats +3 (max. 3 stars).","Trade-Karte":"Trade card","Trade-Karten":"Trade cards","Du erhältst eine Trade-Karte für die Free Agency.":"You get a trade card for free agency.","Pick-Karte":"Pick card","Pick-Karten":"Pick cards","Du erhältst eine Pick-Karte für die Draft-Lotterie.":"You get a pick card for the draft lottery.","Heißes Händchen":"Hot hand","Ein Spieler erhält +5 Shooting und +5 Driving fürs nächste Spiel.":"One player gets +5 Shooting and +5 Driving for the next game.","Defensiv-Fokus":"Defensive focus","Ein Spieler erhält +5 Perimeter Def und +5 Zone Def fürs nächste Spiel.":"One player gets +5 Perimeter Def and +5 Zone Def for the next game.","Medizin-Team":"Medical team","Alle Verletzungen werden sofort geheilt.":"All injuries are healed immediately.","Ruhiger Tag":"Quiet day","Kein besonderes Ereignis.":"Nothing special happens.","Die Datei enthält keine Kartenzeilen.":"The file contains no card rows.","Spaltenüberschriften fehlen: Typ, Position, Kartenname, Wurf, Drive, Zone DEF, Per.Def.":"Missing column headers: Typ, Position, Kartenname, Wurf, Drive, Zone DEF, Per.Def.","): Typ unbekannt":"): unknown type","): Position muss Guard, Forward oder Center sein":"): position must be Guard, Forward or Center","): Werte müssen Zahlen von 1 bis 99 sein":"): stats must be numbers from 1 to 99","): Kartenname doppelt":"): duplicate card name","Kein CSV – ist die Tabelle als CSV veröffentlicht?":"No CSV – is the sheet published as CSV?","All-Stars oder Basics":"All-Stars or Basics","Zu wenige Karten für dieses Spiel":"Not enough cards for this game","Zu wenige Karten für":"Not enough cards for","dieses Spiel":"this game","Es fehlen noch":"Still missing:",". Trag weitere Karten in deine Kartentabelle ein.":". Add more cards to your card sheet.","Google Tabelle":"Google Sheet","Eingebaute Karten":"Built-in cards","Tabelle konnte nicht geladen werden:":"Couldn't load the sheet:","übersprungen:":"skipped:","Zeilen übersprungen:":"rows skipped:","Zeile übersprungen:":"row skipped:","Tabelle neu laden":"Reload sheet","Würfeln":"Roll dice","Kapitän":"Captain","Du bist dran":"Your turn","Kader ansehen":"view roster","Schließen":"Close","Dein Team":"Your team","KI-Manager":"AI manager","· Ringträger":"· Ring holder","Ringträger":"Ring holder","Noch keine Spieler":"No players yet","← Zurück zum Team":"← Back to team","ANGREIFEN ▸":"ATTACK ▸","Antippen zum Vergrößern":"Tap to enlarge","Fremde Position · −":"Out of position · −","Shooting gegen Perimeter Def · Driving gegen Zone Def · Gleichstand gewinnt der Verteidiger":"Shooting vs Perimeter Def · Driving vs Zone Def · ties go to the defender","Menü":"Menu","📋 Mein Kader":"📋 My roster","📖 Spielregeln":"📖 Rules","🏠 Zum Hauptmenü":"🏠 Main menu","Du bist Host. Lass die App geöffnet, sonst stoppt das Spiel für alle.":"You're the host. Keep the app open, or the game stops for everyone.","Spiel für alle beenden":"End game for everyone","Spiel verlassen":"Leave game","Zum Hauptmenü: Das Spiel pausiert für alle, bis du es im Hauptmenü fortsetzt.":"Main menu: the game pauses for everyone until you resume it from the main menu.","Zum Hauptmenü: Dein Platz bleibt reserviert, im Hauptmenü kommst du zurück.":"Main menu: your seat stays reserved – you can come back from the main menu.","📖 So geht's":"📖 How it works","Run aufgeben":"Give up run","Zum Hauptmenü: Der Run wird gespeichert und läuft später weiter.":"Main menu: the run is saved and continues later.","Spiel beenden":"End game","📊 Tabelle":"📊 Standings","Tabelle":"Standings","Spiel wirklich beenden?":"Really end the game?","Der Spielstand wird gelöscht.":"The saved game will be deleted.","Ja, beenden":"Yes, end it","Abbrechen":"Cancel","Kader":"Roster","Spielregeln (Kurzfassung)":"Rules (short version)","Das Ziel wird vor Spielbeginn festgelegt.":"The goal is set before the game starts.","Würfeln für die GM-Reihenfolge → Kapitän (Legend) verdeckt ziehen → Free Agency (8 offene Karten, reihum, bis jeder 8 Spieler hat) → Draft-Lotterie (1 Rookie).":"Roll for GM order → draw a captain (Legend) face down → free agency (8 open cards, in turns, until everyone has 8 players) → draft lottery (1 rookie).","5 Spieler (2 Guards, 2 Forwards, 1 Center), zusammen höchstens":"5 players (2 Guards, 2 Forwards, 1 Center), at most","Mio. Ein Spieler auf fremder Position verliert":"M combined. A player out of position loses","Punkte auf alle Werte.":"points on all stats.","Ein Spieler auf fremder Position verliert":"A player out of position loses","Das Heimteam greift zuerst mit einem Guard an.":"The home team attacks first, with a Guard.","Der Angreifer wählt Shooting (gegen Perimeter Def) oder Driving (gegen Zone Def) und ein beliebiges Ziel.":"The attacker picks Shooting (vs Perimeter Def) or Driving (vs Zone Def) and any target.","Höherer Wert gewinnt, bei Gleichstand der Verteidiger.":"Higher value wins, ties go to the defender.","Hin- und Rückrunde, dann Playoffs. Nach jedem Spiel zieht jedes Team eine Ereigniskarte. Rookies steigen über Ereigniskarten bis zu 3 Sterne auf (+3 auf alle Werte pro Stern).":"First and second half, then playoffs. After every game each team draws an event card. Rookies gain up to 3 stars through event cards (+3 on all stats per star).","Wertausgleich ±":"Value balance ±","Mio., Kader":"M, roster",", alle Positionen besetzt.":", all positions filled.","Tradetime → einen Spieler gegen Trade-Karte entlassen → Free Agency mit Trade-Karten → Draft mit Pick-Karten als Kugeln.":"Trade window → release one player for a trade card → free agency with trade cards → draft with pick cards as balls.","Mio. Gehaltsspielraum für die Starting 5.":"M extra cap room for the Starting 5.","Wer zuerst":"Whoever wins","gewinnt, ist TOP PICK Champion.":"first is TOP PICK Champion.","Freies Spiel ohne Ende – sammelt so viele Ringe, wie ihr wollt.":"Free play without an end – win as many rings as you like.","Ultimate Pick · Stufe":"Ultimate Pick · Stage","· Runde":"· Round","Saison":"Season","· Tradetime":"· Trade window","Tradetime":"Trade window","Spielende":"Game over","⏳ wird übertragen":"⏳ sending","⚡ Stufe":"⚡ Stage","TIPPEN ZUM SPIELEN":"TAP TO PLAY","BALD":"SOON","Fortsetzen":"Continue","Als Host weiterspielen":"Continue as host","Mehrere Saisons · offline oder online":"Multiple seasons · offline or online","Schnelles Online-Match · Draft und Duell":"Quick online match · draft and duel","Run läuft · Stufe":"Run in progress · Stage","Punkte":"points","Rogue-Modus · Rekord":"Rogue mode · Record","Spielstände":"Saved games","Kartenalbum":"Card album","Alle Karten mit ihren Werten":"All cards with their stats","Spielregeln":"Rules","Kurzfassung des Regelwerks":"Short version of the rulebook","Einstellungen":"Settings","Sprache, Animationen, Ton, Credits":"Language, animations, sound, credits","Deine":"Your","← Menü":"← Menu","Animationen":"Animations","„Automatisch“ richtet sich nach „Bewegung reduzieren“ auf deinem Gerät.":"“Automatic” follows “Reduce motion” on your device.","💾 Spielstände verwalten":"💾 Manage saved games","Automatisch":"Automatic","Tippe eine Karte für Details.":"Tap a card for details.","Basketball-Manager · Draft · Free Agency · Playoffs":"Basketball manager · Draft · Free agency · Playoffs","Anzahl GMs":"Number of GMs","Du +":"You +","Dein Name":"Your name","Neues Spiel starten":"Start new game","Gespeichertes Spiel":"Saved game","Löschen":"Delete","Spielstände sind belegt – lösche zuerst einen":"save slots are full – delete one first","GM-Reihenfolge":"GM order","Jeder GM würfelt. Die höchste Zahl wird GM 1 und wählt in der Preseason zuerst.":"Every GM rolls. The highest number becomes GM 1 and picks first in the preseason.","Weiter → Kapitän ziehen":"Continue → draw captain","🎲 Würfeln":"🎲 Roll","Würfelt …":"Rolling …","Kapitäne":"Captains","Kapitän ziehen":"Draw captain","8 Legends liegen verdeckt. Reihum zieht jeder GM eine Karte – danach wird eine neue nachgelegt.":"8 Legends lie face down. Each GM draws one in turn – then a new one is added.","Tippe eine verdeckte Karte":"Tap a face-down card","zieht eine Karte …":"is drawing a card …","Weiter → Free Agency":"Continue → Free agency","Dein Kapitän · Legend":"Your captain · Legend","Dein Kapitän · zufällig gezogen":"Your captain · drawn at random","Dein Kapitän":"Your captain","Tippen zum Überspringen":"Tap to skip","EREIGNIS":"EVENT","Deine Ereigniskarte":"Your event card","Jeder wählt":"Each picks","s pro Pick":"s per pick","Aufstellung":"Lineup","s für deine Starting 5":"s for your Starting 5","Willkommen, GM":"Welcome, GM","Hinrunde · Spieltag":"First half · Matchday","Rückrunde · Spieltag":"Second half · Matchday","Hinrunde":"First half","Teams · Hin- und Rückrunde · Playoffs":"teams · first half, second half · playoffs","Rückrunde":"Second half","Die zweite Saisonhälfte beginnt":"The second half of the season begins","Halbfinale":"Semifinal","Die besten vier kämpfen ums Finale":"The top four fight for the final","Finale":"Final","Ein Spiel um den Ring 💍":"One game for the ring 💍","Saisonmitte":"Midseason","Verstärke dein Team für die Rückrunde":"Strengthen your team for the second half","Danach: Vertragsauflösung · Free Agency · Draft":"Then: releases · free agency · draft","Kader voll (max.":"Roster full (max.","Kader voll (max. 11)":"Roster full (max. 11)","Dir fehlt sonst:":"Otherwise you'd be missing:","8 Karten liegen offen. Reihum verpflichtet jeder GM einen Spieler, bis jeder 8 Spieler hat. Gehalt zählt erst bei der Aufstellung: die Starting 5 dürfen zusammen max.":"8 cards lie face up. Each GM signs one player in turn until everyone has 8. Salary only counts for the lineup: the Starting 5 may cost at most","Mio kosten.":"M combined.","Mio kosten":"M","Jede Trade-Karte erlaubt eine Verpflichtung. Es beginnt der Finalverlierer, dann im Uhrzeigersinn.":"Each trade card allows one signing. The finals loser starts, then clockwise.","Free Agency abgeschlossen":"Free agency complete","Dein Kader":"Your roster","Weiter → Draft-Lotterie":"Continue → Draft lottery","Wähle einen Spieler aus der Auslage":"Pick a player from the board","Verpflichte einen Spieler oder passe":"Sign a player or pass","wählt einen Spieler …":"is picking a player …","Picks offen:":"Picks left:","Keine Karten mehr":"No cards left","Passen":"Pass","Keine passende Karte – aussetzen":"No fitting card – skip","Verpflichten · 1 🎟":"Sign · 1 🎟","Verpflichten ·":"Sign ·","⚠️ Die Trade-Karte ist danach verbraucht.":"⚠️ The trade card is used up afterwards.","Es ist deine letzte – danach endet deine Free Agency.":"It's your last one – your free agency ends after this.","Dein Kader ist danach voll.":"Your roster will be full afterwards.","Trade-Karte einsetzen?":"Use a trade card?","Mio Gehalt":"M salary","🎟 Trade-Karten":"🎟 Trade cards","👥 Kader":"👥 Roster","Ja, verpflichten":"Yes, sign","Free Agency beenden?":"End free agency?","Du verpflichtest in dieser Offseason niemanden mehr.":"You won't sign anyone else this offseason.","Ja, passen":"Yes, pass","Kader voll":"Roster full","Draft-Lotterie":"Draft lottery","Jeder GM hat eine Kugel. Die erste gezogene Kugel hat die erste Wahl. Rookies starten mit 0 Sternen.":"Every GM has one ball. The first ball drawn gets the first pick. Rookies start with 0 stars.","Setze Pick-Karten als Kugeln ein – mehr Kugeln, höhere Chance auf eine frühe Wahl. Jeder GM erhält nur einen Pick.":"Use pick cards as balls – more balls, better odds of an early pick. Each GM gets only one pick.","Setze Pick-Karten als Kugeln ein – mehr Kugeln, höhere Chance auf eine frühe Wahl. Jeder GM erhält höchstens einen Pick.":"Use pick cards as balls – more balls, better odds of an early pick. Each GM gets at most one pick.","Rookie-Klasse":"Rookie class","Rookie-Upgrade":"Rookie upgrade","Deine Kugeln":"Your balls","🎱 Pick-Karten:":"🎱 Pick cards:","🎱 Pick-Karten":"🎱 Pick cards","Eingesetzte Karten sind verbraucht":"Used cards are gone","Dein Kader ist voll – du kannst nicht teilnehmen.":"Your roster is full – you can't take part.","– du kannst nicht teilnehmen.":"– you can't take part.","Ohne mich – Draft starten":"Without me – start draft","Ohne mich":"Without me","— ausgesetzt":"— skipped","Tippe die Lotterie für Pick":"Tap the lottery for pick","Tippe die Trommel für Pick":"Tap the drum for pick","– jeder darf drehen":"– anyone can spin","Wähle deinen Rookie":"Pick your rookie","Kugeln in der Lotterie":"Balls in the lottery","in der Lotterie":"in the lottery","Draft-Board":"Draft board","Keine Teilnehmer":"No participants","Noch keine Picks":"No picks yet","Kader voll – aussetzen":"Roster full – skip","Du tauschst":"You trade","Pick-Karten in Draftkugeln um.":"pick cards for draft balls.","Danach bleiben dir":"You'll have","für später erhalten.":"left for later.","⚠️ Eingesetzte Karten sind verbraucht – auch wenn deine Kugel spät gezogen wird. Du erhältst höchstens einen Pick.":"⚠️ Used cards are gone – even if your ball is drawn late. You get at most one pick.","Anzahl ändern":"Change amount","Ohne dich draften?":"Draft without you?","Du nimmst an diesem Draft nicht teil.":"You won't take part in this draft.","Ja, ohne mich":"Yes, without me","Rookie wählen":"Pick rookie","Draften ·":"Draft ·","Letzte Kugel – du bist direkt dran":"Last ball – you're up right away","Letzte Kugel –":"Last ball –","hat die letzte Kugel und ist direkt dran":"has the last ball and is up right away","Du setzt":"You use","Dein Kader ist voll":"Your roster is full","Du hast keine Pick-Karten":"You have no pick cards","Die Lotterie zieht die nächste Kugel …":"The lottery draws the next ball …","Weiter → Saison":"Continue → Season","Niemand nimmt am Draft teil":"Nobody takes part in the draft","· Heim":"· Home","· antippen für Kader":"· tap for roster","💍 Ringe:":"💍 Rings:","(nächstes Spiel)":"(next game)","Spieltag simulieren":"Simulate matchday","Spieltag":"Matchday","Dein Spiel":"Your game","Du ·":"You ·","Heimspiel":"Home game","Auswärtsspiel":"Away game","Du greifst zuerst an – mit einem Guard":"You attack first – with a Guard","Der Gegner greift zuerst an":"The opponent attacks first","greift zuerst an":"attacks first","Du bist in diesem Playoff-Spiel nicht vertreten.":"You're not in this playoff game.","Du hast an diesem Spieltag spielfrei.":"You have a bye this matchday.","Spiel simulieren":"Simulate game","Simulieren":"Simulate","Aufstellung & Spielen":"Lineup & play","× fremde Position · −":"× out of position · −","2 Guards, 2 Forwards, 1 Center – zusammen höchstens":"2 Guards, 2 Forwards, 1 Center – at most","Mio. Auf fremder Position verliert ein Spieler":"M combined. Out of position, a player loses","👀 Gegner ansehen:":"👀 Scout opponent:","Spiel starten (":"Start game (","Teams)":"teams)","Spiel starten":"Start game","(Heim)":"(home)","Scouting-Bericht":"Scouting report","Top 3 von":"Top 3 of","Spielern":"players","Verletzt – nicht einsatzfähig":"Injured – not available","Zu teuer – die Starting 5 dürfen max.":"Too expensive – the Starting 5 may cost at most","Kader – tippen zum Ein-/Auswechseln":"Roster – tap to sub in/out","Tauschen:":"Swap:","– tippe einen anderen Platz oder einen Bankspieler":"– tap another spot or a bench player","ausgewählt – tippe einen Bankspieler zum Einwechseln":"selected – tap a bench player to sub in","spielt als":"plays as","– alle Werte −":"– all stats −","kommt für":"comes in for","Bereits 5 Spieler – erst einen auswechseln":"Already 5 players – sub one out first","Noch keine gespeichert – stelle dein Team auf und speichere es unten.":"None saved yet – set up your team and save it below.","Automatisch aufstellen":"Auto lineup","Worauf soll die Starting 5 ausgelegt sein? Die Gehaltsgrenze wird eingehalten, fremde Positionen nur, wenn es sich trotz −":"What should the Starting 5 focus on? The salary cap is respected; out-of-position only if it's worth it despite −"," lohnt.":".","Offensiv":"Offensive","Die besten Angreifer – Shooting und Driving":"The best attackers – Shooting and Driving","Ausgeglichen":"Balanced","Die beste Gesamtwertung (OVR)":"The best overall rating (OVR)","Defensiv":"Defensive","Die besten Verteidiger – Perimeter Def und Zone Def":"The best defenders – Perimeter Def and Zone Def","Eigene":"Custom","Aktuelle Aufstellung als Eigene überschreiben":"Overwrite custom with current lineup","Aktuelle Aufstellung als Eigene speichern":"Save current lineup as custom","Eigene Aufstellung gespeichert":"Custom lineup saved","Offensive Aufstellung":"Offensive lineup","Ausgeglichene Aufstellung":"Balanced lineup","Defensive Aufstellung":"Defensive lineup","Eigene Aufstellung":"Custom lineup","Aus der Starting 5 nehmen":"Remove from Starting 5","Tauschen":"Swap","Du greifst zuerst an: tippe einen":"You attack first: tap a","und wähle die Attacke":"and choose your attack","Dein Angriff: tippe einen Spieler und wähle die Attacke":"Your attack: tap a player and choose your attack","wählt einen Angreifer …":"is choosing an attacker …","Ziel wählen: tippe einen gegnerischen Spieler":"Choose a target: tap an opposing player","wählt ein Ziel …":"is choosing a target …","Duell läuft …":"Duel in progress …","Spiel beendet":"Game over","· Auswärts":"· Away","Best of 5 · Duell":"Best of 5 · Duel","Verdeckte Karte – greif sie an, um sie aufzudecken":"Face-down card – attack it to reveal it","Tippe 🎯 Shooting oder 🏃 Driving, um anzugreifen.":"Tap 🎯 Shooting or 🏃 Driving to attack.","Der erste Angriff muss mit einem Guard erfolgen.":"The first attack must be made with a Guard.","– wähle ein Ziel":"– choose a target","🏠 HEIM":"🏠 HOME","✈️ AUSWÄRTS":"✈️ AWAY","⚔️ Angriff":"⚔️ Attack","🛡 Verteidigung":"🛡 Defense","Duell":"Duel","Gleichstand – der Verteidiger gewinnt.":"Tie – the defender wins.","Punkt für dich!":"Point for you!","Punkt für":"Point for","Sieg!":"Win!","Niederlage":"Loss","Gegner":"Opponent","Simulation · Münzwurf":"Simulation · Coin toss","Du vs":"You vs","Pro Position ein Wurf · Kopf = Punkt für dich · Zahl = Punkt für":"One toss per position · heads = point for you · tails = point for","KOPF":"HEADS","ZAHL":"TAILS","Sieg":"Win","Stand:":"Score:","Niemand betroffen.":"Nobody affected.","Kein Rookie, der gespielt hat, kann aufsteigen – das Upgrade verfällt.":"No rookie who played can level up – the upgrade is lost.","+1 Trade-Karte":"+1 trade card","+1 Pick-Karte":"+1 pick card","Kein Effekt.":"No effect.","im nächsten Spiel.":"next game.","Alle fit – keine Wirkung.":"Everyone fit – no effect.","Liga-News":"League news","Ergebnisse":"Results","Keine weiteren Ereignisse":"No other events","Der Ringträger erhält +":"The ring holder gets +","Mio. Gehaltsspielraum für die Starting 5 der nächsten Saison.":"M extra cap room for next season's Starting 5.","Endplatzierung & Pick-Belohnung":"Final standings & pick reward","Ringe · Ziel":"rings · goal","Weiter → Offseason":"Continue → Offseason","· Abschluss":"· Wrap-up","Meisterschaft":"Championship","Du bist Champion!":"You're the champion!","ist Champion":"is champion","Neues Spiel":"New game","Du hast es geschafft!":"You did it!","Ringe":"rings","Angebot enthält Spieler oder Karten":"Offer includes players or cards","Mio. (Δ":"M (Δ","Dein Kader:":"Your roster:","Deine Positionen bleiben besetzt":"Your positions stay filled","Positionen":"Positions","bleiben besetzt":"stay filled","Handelspartner":"Trade partner","Du gibst":"You give","Du bekommst von":"You get from","Du bekommst":"You get","Prüfung":"Check","Tradetime beenden":"End trade window","Angebot senden":"Send offer","Phase 6 · Saisonmitte":"Phase 6 · Midseason","Tausche Spieler, Trade- und Pick-Karten. Der Gesamtwert muss innerhalb ±":"Trade players, trade cards and pick cards. Total value must be within ±","Mio. ausgeglichen sein (1 Karte =":"M (1 card =","Mio.).":"M).","lehnt ab – zu wenig Gegenwert.":"declines – not enough value in return.","lehnt ab – zu wenig Gegenwert":"declines – not enough value in return","Trade mit":"Trade with","abgeschlossen! ✅":"completed! ✅","Kader muss mindestens":"Roster needs at least","Spieler haben":"players","Sonst fehlt eine Position":"Otherwise a position would be empty","Kader – tippe zum Entlassen":"Roster – tap to release","– tippe zum Entlassen":"– tap to release","Niemanden entlassen":"Release nobody","Vertragsauflösung":"Releases","Du darfst einen Spieler entlassen und erhältst dafür eine Trade-Karte. Der Kader muss 8–11 Spieler umfassen und alle Positionen abdecken.":"You may release one player and get a trade card for it. The roster must have 8–11 players and cover all positions.","Du darfst einen Spieler entlassen und erhältst dafür eine Trade-Karte. Der Kader muss danach 8–11 Spieler haben und alle Positionen abdecken.":"You may release one player and get a trade card for it. Afterwards the roster must have 8–11 players and cover all positions.","Vertrag auflösen?":"Release player?","Du erhältst 1 Trade-Karte. Der Spieler kommt zurück in den":"You get 1 trade card. The player goes back to the","Rookie-Stapel, seine Sterne verfallen.":"rookie pile and loses his stars.","Free-Agency-Stapel.":"free agency pile.","Entlassen → +1 🎟":"Release → +1 🎟","entlässt":"releases","Angebot ungültig":"Invalid offer","nimmt dein Angebot an":"accepts your offer","📨 Neues Trade-Angebot von":"📨 New trade offer from","📨 Angebot an":"📨 Offer to","✅ Trade zwischen":"✅ Trade between","Trade ist nicht mehr gültig":"Trade is no longer valid","hat dein Angebot abgelehnt":"declined your offer","hat sein Angebot zurückgezogen":"withdrew the offer","Dein Angebot an":"Your offer to","Nicht mehr gültig":"No longer valid","Annehmen":"Accept","Ablehnen":"Decline","Zurückziehen":"Withdraw","Tausche Spieler, Trade- und Pick-Karten mit jedem GM. Der Wert muss innerhalb ±":"Trade players, trade cards and pick cards with any GM. Value must be within ±","Mio.). KI-Manager antworten sofort, Mitspieler bekommen dein Angebot zum Annehmen oder Ablehnen.":"M). AI managers answer right away; other players can accept or decline your offer.","📨 Angebote an dich":"📨 Offers to you","Deine offenen Angebote":"Your open offers","Deine Entscheidung ist gespeichert.":"Your decision is saved.","8 Karten liegen offen. Reihum verpflichtet jeder GM einen Spieler, bis jeder 8 Spieler hat. Die Starting 5 dürfen später zusammen max.":"8 cards lie face up. Each GM signs one player in turn until everyone has 8. Later, the Starting 5 may cost at most","8 Karten liegen offen. Jede Trade-Karte erlaubt eine Verpflichtung. Es beginnt der Verlierer des Finales, danach geht es reihum. Wer passt, ist für diese Offseason fertig.":"8 cards lie face up. Each trade card allows one signing. The finals loser starts, then in turn. Whoever passes is done for this offseason.","Du bist fertig":"You're done","Laden fehlgeschlagen:":"Loading failed:","Keine Schreibrechte: Der Besitzer des Artifacts muss dich als Editor einladen.":"No write access: the artifact owner has to invite you as an editor.","Der gemeinsame Speicher ist voll.":"The shared storage is full.","Der Zugriff auf das Artifact wurde entzogen.":"Access to the artifact was revoked.","Zu viele Anfragen – kurz warten.":"Too many requests – wait a moment.","Verbindung gestört – wird erneut versucht.":"Connection problem – retrying.","Online ist hier nicht verfügbar.":"Online isn't available here.","Online ist hier nicht verfügbar":"Online isn't available here","Bitte gib deinen Namen ein":"Enter your name","Kein freier Raumcode – bitte nochmal versuchen":"No free room code – try again","Bitte Name und Raumcode eingeben":"Enter your name and room code","nicht gefunden":"not found","wurde nicht gefunden":"was not found","Spielstand des Raums ist beschädigt":"The room's game data is damaged","Nur der ursprüngliche Host kann den Raum fortsetzen":"Only the original host can resume the room","läuft wieder":"is running again","kopiert":"copied","Raumcode:":"Room code:","Einen Moment – die letzte Aktion wird noch übertragen …":"One moment – your last action is still being sent …","Keine Antwort vom Host – ist seine App noch geöffnet?":"No answer from the host – is their app still open?","⏳ Einen Moment …":"⏳ One moment …","übernimmt":"takes over","ist wieder dabei":"is back","hat das Match verlassen.":"left the match.","hat das Match verlassen":"left the match","hat das Spiel verlassen – ein KI-Manager übernimmt":"left the game – an AI manager takes over","⏳ Warte auf den Host (":"⏳ Waiting for the host (","⏳ Warte auf den Host …":"⏳ Waiting for the host …","Verbindung zum gemeinsamen Speicher wird hergestellt …":"Connecting to shared storage …","Keine Verbindung zum Online-Server":"No connection to the online server","Online ist noch nicht eingerichtet":"Online isn't set up yet","Firebase konnte nicht verbunden werden. Prüfe die Firebase-Daten in der index.html, ob die anonyme Anmeldung aktiviert ist und ob die Datenbank-Regeln stimmen.":"Couldn't connect to Firebase. Check the Firebase data in index.html, whether anonymous sign-in is enabled, and the database rules.","In dieser Version fehlen die Firebase-Daten. Trage sie oben in der index.html bei FIREBASE_CONFIG ein. Offline gegen die KI kannst du trotzdem spielen.":"This version has no Firebase data. Add it at FIREBASE_CONFIG at the top of index.html. You can still play offline against the AI.","Firebase konnte nicht verbunden werden.":"Couldn't connect to Firebase.","In dieser Version fehlen die Firebase-Daten.":"This version has no Firebase data.","Nur Leserechte":"Read-only access","Mit deinem Zugang kannst du keine Züge senden. Bitte den Besitzer des Artifacts, dich per E-Mail als Editor einzuladen.":"Your access can't send moves. Ask the artifact owner to invite you as an editor by email.","Mit deinem Zugang kannst du keine Züge senden.":"Your access can't send moves.","Dein Wunsch-Team":"Your preferred team","Ist es schon vergeben, bekommst du ein freies Team und kannst in der Lobby wechseln.":"If it's taken, you get a free team and can switch in the lobby.","Neuen Raum erstellen":"Create a new room","Als Host steuert dein Gerät den Spielablauf und die KI-Manager. Lass die App während des Spiels geöffnet.":"As host, your device runs the game and the AI managers. Keep the app open during the game.","Raum beitreten":"Join room","Gut zu wissen":"Good to know","Fliegst du raus, trittst du einfach mit demselben Code wieder bei und übernimmst deinen Platz.":"If you drop out, just rejoin with the same code and take your seat back.","Der Host steuert das Spiel – seine Seite muss während des Spiels geöffnet bleiben.":"The host runs the game – their page has to stay open during the game.","Mit Freunden spielen":"Play with friends","Jeder spielt auf seinem eigenen Gerät. Einer erstellt den Raum und ist Host, die anderen treten mit dem Raumcode bei. Freie Plätze übernehmen KI-Manager.":"Everyone plays on their own device. One creates the room and hosts, the others join with the room code. AI managers fill empty seats.","Einen Moment …":"One moment …","Raum erstellen":"Create room","Beitreten":"Join","Deine Freunde brauchen ein claude.ai-Konto und müssen vom Besitzer des Artifacts per E-Mail als Editor eingeladen sein, sonst können sie keine Züge senden.":"Your friends need a claude.ai account and must be invited as editors by the artifact owner, otherwise they can't send moves.","Deine Freunde brauchen nur den Link zu dieser Seite und den Raumcode – kein Konto, keine Anmeldung.":"Your friends only need the link to this page and the room code – no account, no sign-in.","Verbinde mit dem Raum …":"Connecting to the room …","Raumcode":"Room code","📋 Code kopieren":"📋 Copy code","Freie Plätze füllen KI-Manager auf.":"AI managers fill empty seats.","Online · Warteraum":"Online · Lobby","Teile den Code und warte, bis alle da sind. Deine Freunde öffnen dieses Artifact, wählen „Online mit Freunden“ und treten mit dem Code bei. Neue Mitspieler erscheinen hier automatisch.":"Share the code and wait until everyone's here. Your friends open this artifact, choose “Online with friends” and join with the code. New players show up here automatically.","Du bist im Warteraum. Das Spiel beginnt, sobald der Host es startet.":"You're in the lobby. The game starts as soon as the host starts it.","(Du)":"(you)","Freier Platz":"Open seat","Wartet auf einen Mitspieler, sonst spielt die KI":"Waiting for a player, otherwise the AI plays","Der Raum ist voll (6 Teams).":"The room is full (6 teams).","Dein Beitritt wird bestätigt …":"Confirming your entry …","Teams insgesamt":"Total teams","Spielziel":"Game goal","Das Spiel läuft bereits. Übernimm deinen alten Platz oder ein Team, das gerade ein KI-Manager spielt.":"The game is already running. Take back your old seat or a team currently played by an AI manager.","KI-Teams übernehmen":"Take over AI teams","Plätze von Mitspielern":"Other players' seats","Nur antippen, wenn das dein eigener Platz ist.":"Only tap if this is your own seat.","Platz zurückholen":"Take seat back","⏳ Wird übertragen …":"⏳ Sending …","Jeder GM würfelt selbst. Die höchste Zahl wird GM 1 und wählt in der Preseason zuerst. Wer nicht innerhalb von 15 Sekunden würfelt, würfelt automatisch.":"Every GM rolls their own die. The highest number becomes GM 1 and picks first in the preseason. Anyone who doesn't roll within 15 seconds rolls automatically.","würfelt …":"rolling …","Gleichstand – Stechen entschieden":"Tie – decided by tiebreak","hat gewürfelt":"has rolled","würfelt gleich …":"rolls in a moment …","muss noch würfeln":"still has to roll","(KI)":"(AI)","🎲 Würfeln ·":"🎲 Roll ·","⏳ Warte auf":"⏳ Waiting for","die KI":"the AI","Ø OVR der besten Starting 5":"Avg OVR of the best Starting 5","Zum Hauptmenü":"Main menu","Preseason abgeschlossen":"Preseason complete","Die Teams stehen":"The teams are set","Alle Kader sind komplett. Die Saison mit Aufstellung, Live-Duellen und Ereigniskarten kommt im nächsten Schritt.":"All rosters are complete. The season with lineups, live duels and event cards comes next.","🏀 Anpfiff:":"🏀 Tip-off:","gegen":"vs","wurde vom Host simuliert (":"was simulated by the host (","KI gegen KI · wird simuliert":"AI vs AI · being simulated","greift an":"attacks","simuliert":"simulated","⏩ Simulieren":"⏩ Simulate","Spiel simulieren?":"Simulate game?","wird per Münzwurf entschieden":"will be decided by coin toss",", der bisherige Spielstand bleibt erhalten":", the current score is kept",". Nutze das, wenn ein Spieler nicht mehr reagiert.":". Use this if a player stops responding.","Ja, simulieren":"Yes, simulate","Du bist in diesen Playoffs nicht dabei. Schau zu, wie die anderen um den Ring spielen.":"You're not in these playoffs. Watch the others play for the ring.","⏳ Warte auf die Aufstellung von":"⏳ Waiting for the lineup of","Warte auf die Aufstellung von":"Waiting for the lineup of","Zurück zum Spiel":"Back to game","Spiele":"games","Aufstellung bestätigen":"Confirm lineup","← Spieltag":"← Matchday","ist am Zug …":"is up …","· Duell":"· Duel","Du hattest spielfrei – keine Ereigniskarte.":"You had a bye – no event card.","Tabelle nach der Hinrunde":"Standings after the first half","· Saisonmitte":"· Midseason","Die Hinrunde ist vorbei. Trades zwischen Spielern kommen in Schritt 3 – diesmal geht es direkt mit der Rückrunde weiter.":"The first half is over. Trades between players come in step 3 – this time it goes straight to the second half.","Weiter → Rückrunde":"Continue → Second half","Abschlusstabelle":"Final standings","Hauptrunde beendet":"Regular season over","steht auf Platz 1. Playoffs, Ringe und die Offseason folgen in Schritt 3.":"is in first place. Playoffs, rings and the offseason follow in step 3.","Weiter (Host)":"Continue (host)","Wer noch nicht fertig ist, verpasst diesen Schritt. Nutze das, wenn jemand nicht mehr reagiert.":"Anyone not done yet misses this step. Use this if someone stops responding.","Ja, weiter":"Yes, continue","Match beendet":"Match over","Dein Gegner hat das Match verlassen.":"Your opponent left the match.","Der Host hat das Spiel in Raum":"The host ended the game in room"," beendet.":".","Zu wenige Karten – es fehlen":"Not enough cards – missing","Jetzt schon starten?":"Start now?","Wer später kommt, kann mit dem Code noch ein KI-Team übernehmen.":"Anyone who comes later can still take over an AI team with the code.","Weiter warten":"Keep waiting","Bisher bist nur du im Raum.":"So far you're alone in the room.","Spiel für alle beenden?":"End the game for everyone?","wird geschlossen. Deine Mitspieler sehen einen Hinweis und kehren zum Hauptmenü zurück.":"will be closed. The other players see a notice and return to the main menu.","Ja, Spiel beenden":"Yes, end game","Spiel verlassen?":"Leave game?","Ein KI-Manager übernimmt dein Team. Mit dem Code kannst du später zurückkommen und ein KI-Team übernehmen.":"An AI manager takes over your team. With the code you can come back later and take over an AI team.","Ja, verlassen":"Yes, leave","wählt zuerst –":"picks first –","hat dafür Heimvorteil":"gets home court instead","möchte ein Rematch":"wants a rematch","Zeit abgelaufen – es wurde automatisch gewählt":"Time's up – a player was picked for you","Zeit abgelaufen – deine Aufstellung wurde automatisch gesetzt":"Time's up – your lineup was set automatically","Zeit abgelaufen – automatischer Angriff":"Time's up – automatic attack","Kein freier Code – bitte nochmal versuchen":"No free code – try again","Bitte Name und Code eingeben":"Enter your name and code","Das ist ein Code für GM Career – tritt ihm unter „Online“ bei":"That's a GM Career code – join it under “Online”","Match verlassen?":"Leave match?","Das Match endet für beide.":"The match ends for both of you.","Den Rest des Matches spielt die KI für dich.":"The AI plays the rest of the match for you.","📖 So läuft Jump Ball":"📖 How Jump Ball works","So läuft Jump Ball":"How Jump Ball works","Match verlassen":"Leave match","Lass die App geöffnet, sonst stoppt das Match.":"Keep the app open, or the match stops.","• Ihr seid zu zweit, jeder auf seinem Gerät. Den Gegner findest du zufällig oder per Code.":"• Two players, each on their own device. Find an opponent at random or by code.","30 Karten liegen offen, darunter":"30 cards lie face up, including","Legends. Ihr wählt abwechselnd im Schlangen-System (A, B, B, A …), bis jeder":"Legends. You pick in snake order (A, B, B, A …) until each of you has","Spieler hat.":"players.","Sekunden pro Pick.":"seconds per pick.","• Wer zuerst wählt, spielt auswärts. Der andere hat Heimvorteil und greift zuerst an.":"• Whoever picks first plays away. The other gets home court and attacks first.","Sekunden. Es gelten die normalen Regeln: höchstens":"seconds. Normal rules apply: at most","Mio für die Starting 5, fremde Position −":"M for the Starting 5, out of position −","ein Best-of-5 mit":"a best of 5 with","Sekunden pro Angriff.":"seconds per attack.","• Läuft eine Zeit ab, wählt, stellt auf oder greift das Spiel automatisch für dich an.":"• If time runs out, the game picks, sets your lineup or attacks for you.","• Danach: Rematch, wenn beide zustimmen, sonst zurück ins Menü.":"• Afterwards: rematch if both agree, otherwise back to the menu.","Verbindung zum Online-Server wird hergestellt …":"Connecting to the online server …","Zu wenige Karten":"Not enough cards","Es fehlen":"Missing:","Zufälliger Gegner":"Random opponent","Du wirst mit dem nächsten Spieler verbunden, der ebenfalls sucht.":"You'll be matched with the next player who's also searching.","Gegen einen Freund":"Against a friend","Match erstellen":"Create match","oder mit Code beitreten":"or join with a code","So läuft's":"How it works","Schnelles Match zu zweit: gemeinsamer Draft aus 30 Karten, jeder wählt":"Quick match for two: a shared draft of 30 cards, each picks","Spieler, dann ein Best-of-5.":"players, then a best of 5.","⚔️ Gegner suchen":"⚔️ Find opponent","Suche läuft":"Searching","Ein Freund kann auch direkt mit dem Code beitreten:":"A friend can also join directly with the code:","Gegner wird gesucht …":"Looking for an opponent …","Sobald jemand anderes sucht, geht es los. Lass die App so lange geöffnet.":"As soon as someone else searches, it starts. Keep the app open until then.","Match-Code":"Match code","Warte auf den zweiten Spieler …":"Waiting for the second player …","Warte auf deinen Gegner":"Waiting for your opponent","Schick deinem Freund den Code. Er öffnet Jump Ball und tritt damit bei – das Match startet automatisch.":"Send your friend the code. They open Jump Ball and join with it – the match starts automatically.","Gleich geht es los …":"Starting in a moment …","Dieses Match ist bereits voll.":"This match is already full.","Du hast Heimvorteil und greifst im Spiel zuerst an.":"You have home court and attack first in the game.","Du hast den ersten Pick, spielst dafür auswärts.":"You have the first pick, so you play away.","Wähle einen Spieler":"Pick a player","Aufstellung steht":"Lineup set","Serie · Du":"Series · You","Duelle":"Duels","🏠 Menü":"🏠 Menu","Das Spiel wurde simuliert.":"The game was simulated.","Nochmal zurück: Du verlässt das Match":"Press back again to leave the match","Nochmal zurück: Das Spiel pausiert für alle, bis du zurückkommst":"Press back again: the game pauses for everyone until you return","Nochmal zurück: Das laufende Spiel wird abgebrochen":"Press back again to abandon the current game","Unbekannt":"Unknown","Kartenbilder":"Card images","Bilder":"Images","Musik":"Music","Start & Hauptmenü":"Start & main menu","Im Spiel":"In game","Noch keine Musik gefunden. Lege MP3-Dateien neben die index.html (oder in einen Ordner „musik“):":"No music found yet. Put MP3 files next to index.html (or in a folder “musik”):","für Startbildschirm und Hauptmenü":"for the start screen and main menu","für Spieltag, Draft, Trades und Offseason":"for matchdays, draft, trades and offseason","Ton":"Sound","🎵 Musik":"🎵 Music","🔊 Effekte & Klicks":"🔊 Effects & clicks","Credits · Musik":"Credits · Music","Läuft gerade":"Now playing","⏭ Nächster":"⏭ Next","Warteraum":"Lobby","Saisonende":"End of season","Beendet":"Finished","Dieser Spielstand ist leer oder beschädigt":"This saved game is empty or damaged","Zuletzt gespielt":"Last played","Raum existiert nicht mehr":"Room no longer exists","Mitspieler":"Player","▶️ Fortsetzen":"▶️ Continue","✏️ Umbenennen":"✏️ Rename","🗑 Löschen":"🗑 Delete","Spielstand umbenennen":"Rename saved game","Speichern":"Save","Der Spielstand wird endgültig gelöscht.":"The saved game will be deleted permanently.","Ja, löschen":"Yes, delete","Aus der Liste entfernen":"Remove from list","Entfernen löscht nur den Eintrag auf diesem Gerät, nicht das Spiel deiner Mitspieler.":"Removing only deletes the entry on this device, not the other players' game.","Du bist Host":"You're the host","Du bist Mitspieler":"You're a player","Diesen Raum gibt es nicht mehr.":"This room no longer exists.","Dieses Spiel wurde beendet.":"This game has ended.","▶️ Als Host fortsetzen":"▶️ Continue as host","▶️ Wieder beitreten":"▶️ Rejoin","Online-Räume":"Online rooms","＋ Raum erstellen oder beitreten":"＋ Create or join a room","Offline speicherst du bis zu":"Offline you can save up to","Spiele auf diesem Gerät. Online-Spiele liegen im Raum und bleiben dort, bis der Host sie beendet.":"games on this device. Online games live in the room and stay there until the host ends them.","Noch keine Offline-Spielstände.":"No offline saved games yet.","＋ Neues Offline-Spiel":"＋ New offline game","Alle Plätze belegt – lösche einen Spielstand für ein neues Spiel.":"All slots are full – delete a saved game to start a new one.","Noch keine Online-Räume.":"No online rooms yet.","TOP PICK ist jetzt als App installiert":"TOP PICK is now installed as an app","TOP PICK läuft als App.":"TOP PICK is running as an app.","Installiere TOP PICK auf deinem Startbildschirm – ohne Browserleiste und mit mehr Platz.":"Install TOP PICK on your home screen – no browser bar and more space.","App installieren":"Install app","Tippe in Safari unten auf":"In Safari, tap","Teilen":"Share","Zum Home-Bildschirm":"Add to Home Screen",". TOP PICK startet danach ohne Browserleiste.":". TOP PICK then starts without the browser bar.","Öffne im Browser das Menü (⋮) und wähle":"Open the browser menu (⋮) and choose","Zum Startbildschirm hinzufügen":"Add to Home screen","Als App nutzen":"Use as app","Frei ohne Ende":"Free, no end","2 Ringe":"2 rings","Ringe zum Sieg":"rings to win","Kein Ende – ihr spielt so viele Saisons, wie ihr wollt.":"No end – play as many seasons as you like.","Wähle 1 von 3 Spielern. Am Ende brauchst du mindestens 2 Guards, 2 Forwards und 1 Center.":"Pick 1 of 3 players. In the end you need at least 2 Guards, 2 Forwards and 1 Center.","Wählen ·":"Pick ·","· Boss-Spiel":"· Boss game","Nächster Gegner":"Next opponent","Du · Ø":"You · Avg","Ein besonders starker Gegner mit Legend – ein Sieg bringt +50 Bonuspunkte.":"An especially strong opponent with a Legend – a win brings +50 bonus points.","Sieg 3:1":"Win 3:1","Comeback nach 0:2":"Comeback from 0:2","Rookie entscheidet":"Rookie decides","Boss besiegt":"Boss beaten","Trostpunkte ·":"Consolation points ·","gewonnene Duelle":"duels won","Punkte für den Sieg":"Points for the win","Letztes Spiel":"Last game","Serienmultiplikator":"Streak multiplier","ist jetzt in deinem Team":"is now on your team","Keine Belohnung möglich – dafür +1 Trade-Karte":"No reward possible – +1 trade card instead","Ultimate Pick · Sieg":"Ultimate Pick · Win","Belohnung wählen":"Choose a reward","Nimm einen neuen Rookie oder lass einen Rookie aus diesem Spiel einen Stern aufsteigen.":"Take a new rookie or give a rookie from this game an extra star.","Rookie-Draft · 1 von 3":"Rookie draft · 1 of 3","Dein Kader ist voll – kein Rookie-Draft möglich. Gib im nächsten Schritt Spieler ab, um Platz zu schaffen.":"Your roster is full – no rookie draft possible. Release players in the next step to make room.","Rookie-Upgrade · +1 Stern":"Rookie upgrade · +1 star","Kein Rookie aus diesem Spiel kann aufsteigen.":"No rookie from this game can level up.","Weiter · +1 Trade-Karte":"Continue · +1 trade card","Diesen Rookie nehmen":"Take this rookie","★ · alle Werte +":"★ · all stats +","★ – alle Werte +":"★ – all stats +","+1 Stern":"+1 star","Diese Runde schon 3 Spieler abgegeben":"Already released 3 players this round","Abgeben · +":"Release · +","Zu wenige Trade-Karten":"Not enough trade cards","Kaufen ·":"Buy ·","Angebote":"offers","Spieler abgeben":"Release players","Weiter → Stufe":"Continue → Stage","Ultimate Pick · Kaderumbau":"Ultimate Pick · Roster rebuild","Vor Stufe":"Before stage","Gib bis zu 3 Spieler gegen Trade-Karten ab und hol dir im Shop neue. Basic 1 · All-Star 2 · Legend 3 · Rookie 1 + 1 je Stern.":"Release up to 3 players for trade cards and get new ones in the shop. Basic 1 · All-Star 2 · Legend 3 · Rookie 1 + 1 per star.","Alles ausverkauft.":"Sold out.","Run aufgegeben":"Run given up","Run aufgeben?":"Give up the run?","Der Run endet sofort. Deine bisherigen":"The run ends right away. Your","Punkte werden gewertet.":"points so far count.","Ja, aufgeben":"Yes, give up","Weiterspielen":"Keep playing","Laufenden Run aufgeben?":"Give up the current run?","Punkte aus":"points from","Siegen werden gewertet, dann kannst du neu starten.":"wins count, then you can start over.","Ultimate Pick · Run beendet":"Ultimate Pick · Run over","Punkte ·":"points ·","in Folge":"in a row","Deine Spiele":"Your games","🏆 Rangliste":"🏆 Leaderboard","Hauptmenü":"Main menu","Neuer Run":"New run","Neuer persönlicher Rekord":"New personal record","Dein Rekord:":"Your record:","Keine Spiele gespielt.":"No games played.","· Kapitän":"· Captain","Noch keine Runs gespielt.":"No runs played yet.","Für die Rangliste brauchst du eine Online-Verbindung.":"The leaderboard needs an online connection.","Rangliste wird geladen …":"Loading leaderboard …","Die Rangliste konnte nicht geladen werden.":"Couldn't load the leaderboard.","Noch keine Einträge – sei der Erste!":"No entries yet – be the first!","Meine Runs":"My runs","Rangliste":"Leaderboard","Dein bester Run zählt. Bei Gleichstand entscheiden mehr Siege.":"Your best run counts. Ties are broken by more wins.","Mit einem Gruppencode bekommt dein Freundeskreis eine eigene Rangliste. Du trägst ihn beim Start eines Runs ein.":"With a group code your friends get their own leaderboard. You enter it when starting a run.","Ultimate Pick – so funktioniert's":"Ultimate Pick – how it works","Ein Kapitän (Legend) wird zufällig gezogen. Danach draftest du 8 Spieler, jeweils 1 aus 3.":"A captain (Legend) is drawn at random. Then you draft 8 players, 1 of 3 each time.","Best of 5 gegen KI-Teams, die mit jeder Stufe stärker werden. Jede 5. Stufe ist ein Boss-Spiel. Kein Simulieren, keine Ereigniskarten, keine Verletzungen.":"Best of 5 against AI teams that get stronger every stage. Every 5th stage is a boss game. No simulating, no event cards, no injuries.","Nach jedem Sieg ein Rookie (1 aus 3) oder +1 Stern für einen Rookie, der gespielt hat.":"After every win a rookie (1 of 3) or +1 star for a rookie who played.","Nach jeder Runde bis zu 3 Spieler gegen Trade-Karten abgeben (Basic 1, All-Star 2, Legend 3, Rookie 1 + 1 je Stern) und im Shop neue kaufen. Kader 8–11 Spieler.":"After each round release up to 3 players for trade cards (Basic 1, All-Star 2, Legend 3, Rookie 1 + 1 per star) and buy new ones in the shop. Roster 8–11 players.","Sieg 100 · +20 pro Stufe · 3:0 +50 · 3:1 +25 · Comeback nach 0:2 +40 · Underdog +30 · Rookie entscheidet +15 · Boss +50. Ab dem 5. Sieg ×1,2, ab dem 10. ×1,5.":"Win 100 · +20 per stage · 3:0 +50 · 3:1 +25 · comeback from 0:2 +40 · underdog +30 · rookie decides +15 · boss +50. From the 5th win ×1.2, from the 10th ×1.5.","Die erste Niederlage beendet den Run (10 Trostpunkte pro gewonnenem Duell).":"The first loss ends the run (10 consolation points per duel won).","🏆 Rekord":"🏆 Record","✅ Längste Serie":"✅ Longest streak","Rogue-Modus":"Rogue mode","Kapitän ziehen, 8 Spieler draften, dann Spiel um Spiel gegen immer stärkere Teams. Die erste Niederlage beendet den Run.":"Draw a captain, draft 8 players, then game after game against ever stronger teams. The first loss ends the run.","Laufender Run":"Current run","Run fortsetzen":"Continue run","Gruppencode":"Group code","Alle mit demselben Code landen zusätzlich in einer eigenen Gruppen-Rangliste.":"Everyone with the same code also lands on a separate group leaderboard.","Run starten":"Start run","Mehrere Saisons bis zum TOP PICK Champion.":"Several seasons until the TOP PICK Champion.","Gegen KI-Manager · 2–6 Teams":"Against AI managers · 2–6 teams","Mit Freunden · jeder auf seinem Gerät":"With friends · each on their own device","Tippen zum Schließen":"Tap to close","Werte & Details":"Stats & details","Runde":"Round","Stufe":"Stage","Siege":"wins","Spieler":"players","Karten":"cards","Saisons":"seasons","Raum":"Room","Gast":"Guest","fortsetzen":"resume","wieder beitreten":"rejoin","weiterspielen":"continue","draftet":"drafts","verpflichtet":"signs","zieht":"draws","Punkt":"Point","Kugeln":"balls","Kugel":"ball","teilnehmen":"take part","einsetzen?":"use?","Ring nach":"ring after","Gegenwert":"value in return","Heimvorteil":"home court","Serie":"Series","Wählen":"Pick","Verpflichten":"Sign","Draften":"Draft","Kaufen":"Buy","Alle":"All","Du":"You","KI":"AI","Mensch":"human","Menschen":"humans","Teams":"teams","🔒 Welche 5 Karten auf dem Feld liegen, bleibt verdeckt. Grün markiert = im Duell bereits aufgedeckt.":"🔒 Which 5 cards are on the court stays hidden. Green = already revealed in a duel.","Höherer Wert = Punkt, Gleichstand = Verteidiger. Abwechselnd, Best of 5.":"Higher value = point, tie = defender. Alternating, best of 5.","Name für die Rangliste":"Name for the leaderboard","z. B. JUNGS24":"e.g. CREW24","ist direkt dran":"is up right away","und dann auf":"and then","und":"and","oder":"or","abgeschlossen":"completed","die anderen":"the others","bietet dir an":"offers you","Trade-Karten bleiben erhalten.":"trade cards are kept.","Trade-Karte bleibt erhalten.":"trade card is kept.","Pick-Karten bleiben für später erhalten.":"pick cards are kept for later.","Pick-Karte bleibt für später erhalten.":"pick card is kept for later.","ladescreen_Künstler_Songtitel.mp3":"ladescreen_Artist_Title.mp3","menu_Künstler_Songtitel.mp3":"menu_Artist_Title.mp3"},"pre":[["^Version 1\\.0 · Stand (\\d+)$","Version 1.0 · Build $1"],["^(.+) fällt das nächste Spiel aus\\.$","$1 is out for the next game."],["^(.+) fällt (\\d+) Spiele aus\\.$","$1 is out for $2 games."],["^(.+) fällt aus$","$1 is out"],["^1 Verletzung geheilt\\.$","1 injury healed."],["^(\\d+) Verletzungen geheilt\\.$","$1 injuries healed."],["^(.+) steigt auf (\\d)★ – alle Werte \\+(\\d+)\\.$","$1 rises to $2★ – all stats +$3."],["^Raum (\\w+) fortsetzen$","Resume room $1"],["^Raum (\\w+) wieder beitreten$","Rejoin room $1"],["^Als (.+) weiterspielen$","Continue as $1"],["Pick (\\d+) von (\\d+)","Pick $1 of $2"],["(\\d+) von (\\d+) Spielern","$1 of $2 players"],["(\\d+) KI-Manager\\b","$1 AI managers"],["^Mit (\\d+) Kugeln? teilnehmen$","Enter with $1 ball(s)"],["^(\\d+) Pick-Karten? einsetzen\\?$","Use $1 pick card(s)?"],["^Ja, (\\d+) einsetzen$","Yes, use $1"],["^Ohne (.+) weitermachen\\?$","Continue without $1?"],["Im Raum sind (\\d+) Spieler\\.","There are $1 players in the room."],["(\\d+) Platz übernimmt KI-Manager\\.","An AI manager takes the open seat."],["(\\d+) Plätze übernehmen KI-Manager\\.","AI managers take the $1 open seats."],["^hat Pick (\\d+) und wählt …$","has pick $1 and is choosing …"],["^(\\d+)\\. Ring nach (\\d+) Saisons?$","Ring no. $1 after $2 season(s)"],["^(\\d+) Kugeln? in der Trommel$","$1 ball(s) in the drum"],["^Lade (.+) … (\\d+)/(\\d+)$","Loading $1 … $2/$3"],["^„(.+)“ löschen\\?$","Delete “$1”?"],["^(.+) abgegeben · \\+(\\d+) Trade-Karten?$","$1 released · +$2 trade card(s)"],["^Serie ×(\\d),(\\d)$","Streak ×$1.$2"],["^Kugel (\\d+)$","Ball $1"],["^([GFC]) auf ([GFC])$","$1 at $2"],["Kugeln? ein\\.$","ball(s)."],["^Du setzt$","You use"],["^Saison (\\d+) starten$","Start season $1"],["^(.+) holt den (\\d+)\\. Ring nach (\\d+) Saisons?\\.$","$1 wins ring no. $2 after $3 season(s)."],["noch (\\d+) von (\\d+)","$1 of $2 left"],["^(.+): (.+) greift mit (.+) an$","$1: $2 attacks with $3"],["^Stand: (\\d)","Updated: $1"]],"post":[["×1,2","×1.2"],["×1,5","×1.5"],["(\\d+) (?:Mio|MIO)\\b","$1M"],["(\\d+) M\\b","$1M"],["(\\d+) Siege\\b","$1 wins"],["(\\d+) Ringe\\b","$1 rings"],["(\\d+) Ring\\b","$1 ring"],["(\\d+) Spiele\\b","$1 games"],["(\\d+) Spiel\\b","$1 game"],["(\\d+) Sterne\\b","$1 stars"],["(\\d+) Stern\\b","$1 star"],["(\\d+) Spieler\\b","$1 players"],["(\\d+) Karten\\b","$1 cards"],["(\\d+) Punkte\\b","$1 points"]]};
+function isEN(){return SET.lang!=='de';}
+const TR={trie:null,pre:null,post:null,cache:new Map(),out:new Set()};
+const TR_W=/[A-Za-z0-9ÄÖÜäöüß]/,TR_SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1};
+function trBuild(){
+  const root=Object.create(null);
+  Object.keys(I18N.sub).forEach(k=>{let n=root;for(const ch of k.split('')){n=n[ch]||(n[ch]=Object.create(null));}n['\u0000']=I18N.sub[k];});
+  TR.trie=root;TR.pre=I18N.pre.map(x=>[new RegExp(x[0]),x[1]]);TR.post=I18N.post.map(x=>[new RegExp(x[0],'g'),x[1]]);
+}
+function trTrie(s){
+  let out='',i=0;const n=s.length;
+  while(i<n){
+    let node=TR.trie,j=i,best=-1,bv=null;const st=!(TR_W.test(s[i])&&i>0&&TR_W.test(s[i-1]));
+    if(st)while(j<n){node=node[s[j]];if(!node)break;j++;const v=node['\u0000'];if(v!==undefined&&(!TR_W.test(s[j-1])||j>=n||!TR_W.test(s[j]))){best=j;bv=v;}}
+    if(best>0){out+=bv;i=best;}else{out+=s[i];i++;}
+  }
+  return out;
+}
+function trStr(s){
+  if(!s||!isEN()||!/[A-Za-zÄÖÜäöüß]{2}/.test(s)||TR.out.has(s))return s;
+  const c=TR.cache.get(s);if(c!==undefined)return c;
+  if(!TR.trie)trBuild();
+  const lead=s.match(/^\s*/)[0],core=s.trim(),trail=core?s.slice(lead.length+core.length):'';
+  let r=I18N.exact[core];if(r===undefined)r=I18N.sub[core];
+  if(r===undefined){r=core;TR.pre.forEach(x=>{r=r.replace(x[0],x[1]);});r=trTrie(r);TR.post.forEach(x=>{r=r.replace(x[0],x[1]);});}
+  r=lead+r+trail;
+  if(TR.cache.size>8000){TR.cache.clear();TR.out.clear();}
+  TR.cache.set(s,r);TR.out.add(r);return r;
+}
+function trNode(t){if(!isEN())return;const p=t.parentNode;if(!p||TR_SKIP[p.nodeName])return;const v=t.nodeValue,r=trStr(v);if(r!==v)t.nodeValue=r;}
+function trTree(root){
+  if(!root||!isEN())return;
+  if(root.nodeType===3){trNode(root);return;}
+  if(root.nodeType!==1||TR_SKIP[root.nodeName])return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),list=[];let n;
+  while((n=w.nextNode()))list.push(n);list.forEach(trNode);
+  const els=[root].concat(Array.prototype.slice.call(root.querySelectorAll('[placeholder],[aria-label],[title]')));
+  els.forEach(el=>{['placeholder','aria-label','title'].forEach(a=>{const v=el.getAttribute&&el.getAttribute(a);if(v){const r=trStr(v);if(r!==v)el.setAttribute(a,r);}});});
+}
+function setLang(l){
+  if(l!=='de')l='en';if((SET.lang||'en')===l)return;
+  SET.lang=l;saveSettings();TR.cache.clear();TR.out.clear();document.documentElement.lang=l;closeSheet();render();trTree(document.body);
+}
+function langSwitchHTML(){const en=isEN();return `<div class="langsw" role="group" aria-label="Language"><button class="${en?'on':''}" onclick="setLang('en')">English</button><button class="${en?'':'on'}" onclick="setLang('de')">Deutsch</button></div>`;}
+if(window.MutationObserver){new MutationObserver(ms=>{ms.forEach(m=>{if(m.type==='characterData'){trNode(m.target);iconText(m.target);}else m.addedNodes.forEach(n=>{trTree(n);iconize(n);});});}).observe(document.body,{childList:true,subtree:true,characterData:true});}
+trTree(document.body);document.documentElement.lang=isEN()?'en':'de';
 /* Logo als Wasserzeichen auf dem Spielfeld */
 (function(){const ball='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.7 5.6c3.1 3.4 3.1 9.4 0 12.8M18.3 5.6c-3.1 3.4-3.1 9.4 0 12.8"/></svg>';
   document.documentElement.style.setProperty('--logo-img',LOGO_IMG?'url("'+LOGO_IMG+'")':'url("data:image/svg+xml,'+encodeURIComponent(ball)+'")');})();
@@ -3357,7 +3646,7 @@ const UP_TC={Basic:1,'All-Star':2,Legend:3};
 const UP_PRICE={Basic:1,'All-Star':2,Legend:3};
 UI.up={name:'',team:0,group:''};UI.upRun=null;UI.upTab='g';UI.upLB=null;
 let UP_HIST=[];
-function fmtPts(n){return Number(n||0).toLocaleString('de-DE');}
+function fmtPts(n){return Number(n||0).toLocaleString(isEN()?'en-US':'de-DE');}
 function upGM(name,team,bot){return{name:name,team:team,bot:!!bot,roster:[],trade:0,picks:0,rings:0,ringHolder:false,inj:{},buffs:[],up:{},roll:0,w:0,l:0,pf:0,pa:0};}
 async function upLoadMeta(){
   try{UP_HIST=JSON.parse(await kvGet('tp_up_hist')||'[]');if(!Array.isArray(UP_HIST))UP_HIST=[];}catch(e){UP_HIST=[];}
@@ -3655,6 +3944,12 @@ function navBack(){
   if(UI.spin)return;                                                      // Lotterie dreht
   if(UI.luSel){UI.luSel=null;UI.luSwap=false;render();return;}
   if(!ST){const sc=UI.screen||'title';if(sc==='upboard'){screen('up');return;}if(sc!=='title'&&sc!=='menu')screen('menu');return;}
+  if(NET.on&&ST&&ST.mode==='jb'){
+    if(UI.sel){UI.sel=null;render();return;}
+    if(ST.phase==='lobby'){jbCancel();return;}
+    if(!navTwice('jb','Nochmal zurück: Du verlässt das Match'))return;
+    quitOnline();return;
+  }
   if(NET.on){
     if(UI.sel){UI.sel=null;render();return;}
     if(UI.view){UI.view=null;render();return;}

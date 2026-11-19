@@ -523,12 +523,12 @@ table.st{width:100%;border-collapse:collapse;font-size:13px}
 body.has-bg #splash,body.has-bg .title-scr{background-image:var(--splash-ov),var(--splash-img);background-size:cover,cover;background-position:center,center;background-repeat:no-repeat}
 body.has-bg .title-scr:before{opacity:.45}
 
-.title-scr .t-name,.menu-head .t-name{font-family:'Russo One','Barlow Condensed',sans-serif!important;font-weight:400;letter-spacing:0;word-spacing:-.18em;white-space:nowrap;background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:#fff!important;-webkit-text-fill-color:#fff;line-height:1;
+.title-scr .t-name,.menu-head .t-name,#splash .sp-name{font-family:'Russo One','Barlow Condensed',sans-serif!important;font-weight:400;letter-spacing:0;word-spacing:-.18em;white-space:nowrap;background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:#fff!important;-webkit-text-fill-color:#fff;line-height:1;
  text-shadow:0 2px 0 #7d8799,0 3px 0 #5d6678,0 4px 0 #434b5c,0 5px 0 #2f3646,0 8px 10px rgba(0,0,0,.6),0 12px 20px rgba(0,0,0,.35)}
-.title-scr .t-name{font-size:54px}
+.title-scr .t-name,#splash .sp-name{font-size:54px}#splash .sp-name{margin-top:20px}
 .menu-head .t-name{font-size:36px;text-shadow:0 1px 0 #7d8799,0 2px 0 #5d6678,0 3px 0 #434b5c,0 4px 0 #2f3646,0 6px 8px rgba(0,0,0,.6),0 10px 16px rgba(0,0,0,.35)}
-.title-scr .t-sub,.menu-head .t-sub{font-family:'Barlow',sans-serif!important;font-weight:700;letter-spacing:.14em;white-space:nowrap;line-height:1;color:#8b95a7;text-shadow:0 1px 0 #000,0 2px 4px rgba(0,0,0,.6)}
-.title-scr .t-sub{margin-top:10px}.menu-head .t-sub{margin-top:7px}
+.title-scr .t-sub,.menu-head .t-sub,#splash .sp-sub{font-family:'Barlow',sans-serif!important;font-weight:700;letter-spacing:.14em;white-space:nowrap;line-height:1;color:#8b95a7;text-shadow:0 1px 0 #000,0 2px 4px rgba(0,0,0,.6)}
+.title-scr .t-sub,#splash .sp-sub{margin-top:10px}.menu-head .t-sub{margin-top:7px}
 </style>
 </head>
 <body>
@@ -977,12 +977,12 @@ function fitCourt(){
   if(Math.abs(w-w0)>1){b.style.setProperty('--cwm',w.toFixed(1)+'px');requestAnimationFrame(fitCourt);}
 }
 window.addEventListener('resize',()=>requestAnimationFrame(fitCourt));
-function logoFit(){try{document.querySelectorAll('.t-name').forEach(n=>{const sb=n.nextElementSibling;if(!sb||!sb.classList.contains('t-sub'))return;
+function logoFit(){try{document.querySelectorAll('.t-name,.sp-name').forEach(n=>{const sb=n.nextElementSibling;if(!sb||!(sb.classList.contains('t-sub')||sb.classList.contains('sp-sub')))return;
   const ink=el=>{const r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect().width;};
   const w=ink(n);if(!w)return;let fs=12;sb.style.paddingLeft='0';sb.style.fontSize=fs+'px';
   for(let i=0;i<4;i++){const ls=parseFloat(getComputedStyle(sb).letterSpacing)||0,sw=ink(sb)-ls;if(sw<=0)return;fs=fs*w/sw;sb.style.fontSize=fs.toFixed(2)+'px';}
   sb.style.paddingLeft=(parseFloat(getComputedStyle(sb).letterSpacing)||0)+'px';});}catch(e){}}
-try{document.fonts&&document.fonts.ready&&document.fonts.ready.then(logoFit);}catch(e){}
+try{logoFit();document.fonts&&document.fonts.ready&&document.fonts.ready.then(logoFit);}catch(e){}
 window.addEventListener('resize',()=>setTimeout(logoFit,50));
 function render(){navSoon();audSync();applyTheme();setTimeout(()=>requestAnimationFrame(fitCourt),0);const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();logoFit();setTimeout(logoFit,300);}
 function seasonLabel(){
@@ -1037,7 +1037,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 48</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 49</div></div>`);
 }
 /* ═════════════ KARTENALBUM: Sammelstufen & Skins ═════════════ */
 const SK_KEYS=['silver','gold','obs'],SK_RANK={none:1,silver:2,gold:3,obs:4},SK_BY=['none','none','silver','gold','obs'],

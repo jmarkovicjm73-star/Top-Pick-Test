@@ -184,6 +184,21 @@ button.chip{cursor:pointer;padding:7px 11px}
 .gbtn svg{width:20px;height:20px;flex-shrink:0}
 .aor{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:12px;font-weight:700;margin:14px 0 2px}
 .aor:before,.aor:after{content:'';flex:1;height:1px;background:var(--ln)}
+/* ── Menü-Hintergrund: Spielfeld + Blitze ── */
+#mbg{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity .35s;background-color:#0a0f1e;background-image:var(--mbg-grain,none),radial-gradient(120% 80% at 50% 35%,#13204a 0%,#0c1430 45%,#0a0f1e 100%);background-repeat:repeat,no-repeat}
+#mbg.on{opacity:1}
+#mbg svg{position:absolute;inset:0;width:100%;height:100%}
+#mbg:after{content:'';position:absolute;inset:0;background:radial-gradient(75% 75% at 50% 40%,rgba(10,15,30,0) 55%,rgba(5,8,15,.85) 100%)}
+#mbg .ln{fill:none;stroke:rgba(225,236,255,.13);stroke-width:1.1;stroke-linecap:round}
+#mbg .bolt{fill:none;stroke:rgba(255,255,255,.75);stroke-width:2;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20}
+#mbg .boltH{fill:none;stroke:#a9cbff;stroke-width:6;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20;opacity:0}
+body.mbg-on{background:transparent}
+.mcard{background:color-mix(in srgb,var(--mbg) 88%,transparent)}
+.menu-head .t-name[data-t]:after{content:attr(data-t);position:absolute;inset:0;color:transparent;-webkit-text-fill-color:transparent;text-shadow:none;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%) no-repeat;background-size:40% 100%;background-position:-60% 0;-webkit-background-clip:text;background-clip:text;pointer-events:none}
+.menu-head .t-name.flash{animation:tflash .8s ease-out}
+.menu-head .t-name.flash:after{animation:tshine .55s ease-out}
+@keyframes tshine{from{background-position:-60% 0}to{background-position:160% 0}}
+@keyframes tflash{0%{filter:none}25%{filter:drop-shadow(0 0 6px rgba(170,205,255,.85)) drop-shadow(0 0 14px rgba(120,170,255,.5))}100%{filter:none}}
 .langsw{display:flex;gap:6px;justify-content:center;margin:18px auto 4px;padding:4px;border:1px solid var(--ln);border-radius:999px;width:max-content;background:rgba(255,255,255,.03)}
 .langsw button{font:inherit;font-weight:800;font-size:13px;color:var(--sub);background:none;border:0;border-radius:999px;padding:7px 16px;cursor:pointer}
 .langsw button.on{background:var(--acc);color:#0a0f1e}
@@ -1044,7 +1059,7 @@ function logoFit(){try{document.querySelectorAll('.t-name,.sp-name').forEach(n=>
   sb.style.paddingLeft=(parseFloat(getComputedStyle(sb).letterSpacing)||0)+'px';});}catch(e){}}
 try{logoFit();document.fonts&&document.fonts.ready&&document.fonts.ready.then(logoFit);}catch(e){}
 window.addEventListener('resize',()=>setTimeout(logoFit,50));
-function render(){navSoon();audSync();applyTheme();setTimeout(()=>requestAnimationFrame(fitCourt),0);const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();logoFit();setTimeout(logoFit,300);}
+function render(){try{mbgSync();}catch(e){}navSoon();audSync();applyTheme();setTimeout(()=>requestAnimationFrame(fitCourt),0);const _mm=isMatchView();if(_mm&&!document.body.classList.contains('mm'))window.scrollTo(0,0);document.body.classList.toggle('mm',_mm);renderHeader();if(NET.on){renderOnline();return;}const ph=ST?ST.phase:'start';(VIEWS[ph]||vStart)();logoFit();setTimeout(logoFit,300);}
 function seasonLabel(){
   const p=ST.phase;if(ST.mode==='tut')return 'Tutorial';if(ST.mode==='up')return 'Ultimate Pick · Stufe '+ST.up.stage;
   if(ST.mode==='jb')return 'Jump Ball'+(ST.jb&&ST.jb.round>1?' · Runde '+ST.jb.round:'');
@@ -1081,7 +1096,7 @@ ${o.live?`<div class="mc-go">${o.pr!=null?`<div class="mc-bar"><i style="width:$
       :{s:`Raum ${esc(cc.m.code)} · ${cc.m.role==='host'?'Host':esc(cc.m.name||'Gast')}`,go:`roomGo('${cc.m.code}')`,pr:null,art:cc.m.top}):null;
   const tile=(ic,col,t,sub,fn,badge)=>`<button class="mtile" onclick="${fn}">${badge?`<span class="mbadge">${badge}</span>`:''}<div class="mc-ic" style="--mc:${col}">${ic}</div><div class="mc-t">${t}</div><div class="mc-s">${sub}</div></button>`;
   app(`<div class="mtop"><button class="mgear" onclick="screen('settings')" aria-label="Einstellungen">${icSVG('gear')}</button>${accChipHTML()}</div>
-<div class="menu-head">${logoHTML()}<div class="t-name">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div></div>
+<div class="menu-head">${logoHTML()}<div class="t-name" data-t="TOP PICK">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div></div>
 ${card({c:'#f97316',bg:'#1d1510',bd:'#7a3e12',ic:'🏀',t:'GM Career',s:car?car.s:'Mehrere Saisons · offline oder online',fn:'careerSheet()',live:!!car,go:car?car.go:'',pr:car?car.pr:null,art:mArtHTML(car&&car.art&&DB[car.art]?car.art:A.R)})}
 ${card({c:'#60a5fa',bg:'#0f1a2e',bd:'#1e4a80',ic:'⚔️',t:'Jump Ball',s:'Schnelles Online-Duell · Draft und Duell',fn:"modeGo('jb')",art:mArtHTML(A.S)})}
 ${card({c:'#fbbf24',bg:'#211a09',bd:'#7a5b10',ic:'⚡',t:'Ultimate Pick',s:ur?`Stufe ${ur.up.stage} · ${fmtPts(ur.up.score)} Punkte`:`Rogue-Modus · Rekord ${UP_HIST.length?fmtPts(UP_HIST[0].score):'–'}`,fn:"modeGo('up')",live:!!ur,go:'upResume()',pr:ur?(((ur.up.stage-1)%5)+1)/5:null,art:ur?mArtHTML(mTop(ur.gms&&ur.gms[0])||A.L,ur.gms&&ur.gms[0]):mArtHTML(A.L)})}
@@ -1089,6 +1104,60 @@ ${card({c:'#fbbf24',bg:'#211a09',bd:'#7a5b10',ic:'⚡',t:'Ultimate Pick',s:ur?`S
 ${typeof langSwitchHTML==='function'?langSwitchHTML():''}`);
   if(ACC.needName&&!ACC.askedName){ACC.askedName=true;setTimeout(()=>{if(!ST&&UI.screen==='menu'&&$('sheet').classList.contains('hidden'))accNameSheet(ACC.p?'force':'create');},500);}
 }
+/* ═════════════ MENÜ-HINTERGRUND: Spielfeld mit Lichtblitzen ═════════════ */
+const MBG={el:null,run:false,n:0,T:null};
+const MBG_R=[
+ {d:"M22 620 V325 H119 A31 31 0 0 1 181 325 A31 31 0 0 1 119 325 H278 V30 H263 V145.6 A140 140 0 0 1 37 145.6 V30 H109 V149 H150",t:1,ms:1500},
+ {d:"M263 30 V145.6 A140 140 0 0 1 37 145.6 V30 H109 V149 H191",t:1,ms:900},
+ {d:"M37 620 V504.4 A140 140 0 0 1 263 504.4 V620",ms:650},
+ {d:"M278 325 H181 A31 31 0 0 0 119 325 A31 31 0 0 0 181 325 H22",ms:700},
+ {d:"M278 620 V30",ms:550},
+ {d:"M22 30 V620 H278",ms:800},
+ {d:"M109 620 V501 H119 A31 31 0 0 1 181 501 H191 V620",ms:600},
+ {d:"M22 325 V30 H278",ms:700}];
+function mbgBuild(){
+  if(MBG.el)return MBG.el;const d=document.createElement('div');d.id='mbg';d.setAttribute('aria-hidden','true');
+  const L=(x)=>x.replace(/<(rect|line|circle|path)/g,'<$1 class="ln"');
+  d.innerHTML=`<svg viewBox="0 0 300 650" preserveAspectRatio="xMidYMid meet"><defs>
+<filter id="mbg-gl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="mbg-gl2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"/></filter></defs>
+<g filter="url(#mbg-gl)">${L(`<rect x="22" y="30" width="256" height="590" rx="2"/><line x1="22" y1="325" x2="278" y2="325"/><circle cx="150" cy="325" r="31"/><circle cx="150" cy="325" r="10"/>
+<rect x="109" y="30" width="82" height="119"/><path d="M119 149 A31 31 0 0 0 181 149"/><path d="M119 149 A31 31 0 0 1 181 149" stroke-dasharray="5 5"/><path d="M37 30 V145.6 A140 140 0 0 0 263 145.6 V30"/>
+<line x1="135" y1="55" x2="165" y2="55"/><circle cx="150" cy="63" r="5"/><path d="M129.5 63 A20.5 20.5 0 0 0 170.5 63"/>
+<rect x="109" y="501" width="82" height="119"/><path d="M119 501 A31 31 0 0 1 181 501"/><path d="M119 501 A31 31 0 0 0 181 501" stroke-dasharray="5 5"/><path d="M37 620 V504.4 A140 140 0 0 1 263 504.4 V620"/>
+<line x1="135" y1="595" x2="165" y2="595"/><circle cx="150" cy="587" r="5"/><path d="M129.5 587 A20.5 20.5 0 0 1 170.5 587"/>
+<line x1="22" y1="206" x2="30" y2="206"/><line x1="270" y1="206" x2="278" y2="206"/><line x1="22" y1="444" x2="30" y2="444"/><line x1="270" y1="444" x2="278" y2="444"/>`)}</g>
+<path id="mbg-bh" class="boltH" pathLength="1000" filter="url(#mbg-gl2)" d="M0 0"/><path id="mbg-bc" class="bolt" pathLength="1000" filter="url(#mbg-gl)" d="M0 0"/></svg>`;
+  document.body.insertBefore(d,document.body.firstChild);MBG.el=d;
+  try{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),im=x.createImageData(128,128);
+    for(let i=0;i<im.data.length;i+=4){const v=180+Math.random()*75;im.data[i]=v;im.data[i+1]=v;im.data[i+2]=255;im.data[i+3]=Math.random()<.5?Math.random()*20:0;}
+    x.putImageData(im,0,0);d.style.setProperty('--mbg-grain',`url(${c.toDataURL()})`);}catch(e){}
+  return d;
+}
+function mbgSync(){
+  const on=!ST&&!NET.on&&UI.screen==='menu';
+  if(!on&&!MBG.el)return;
+  const d=mbgBuild();d.classList.toggle('on',on);document.body.classList.toggle('mbg-on',on);
+  if(on&&!MBG.run&&!RM){MBG.run=true;clearTimeout(MBG.T);MBG.T=setTimeout(mbgBolt,900);}
+}
+function mbgOn(){return !!(MBG.el&&MBG.el.classList.contains('on'))&&!RM&&!document.hidden;}
+function mbgBolt(){
+  if(!mbgOn()){MBG.run=false;return;}
+  const bc=document.getElementById('mbg-bc'),bh=document.getElementById('mbg-bh');if(!bc||!bh||!bc.animate){MBG.run=false;return;}
+  const r=(MBG.n%3===2)?MBG_R[Math.random()<.5?0:1]:MBG_R[Math.floor(Math.random()*MBG_R.length)];MBG.n++;
+  const rev=!r.t&&Math.random()<.5,ms=r.ms*(.8+Math.random()*.4),a0=rev?-1000:20,a1=rev?20:-1000;
+  bc.setAttribute('d',r.d);bh.setAttribute('d',r.d);
+  const op={duration:ms,easing:'cubic-bezier(.3,.1,.6,1)',fill:'forwards'};
+  try{
+    bc.animate([{strokeDashoffset:a0},{strokeDashoffset:a1}],op);
+    const a=bh.animate([{strokeDashoffset:a0,opacity:.55},{strokeDashoffset:a1,opacity:.3}],op);
+    a.onfinish=()=>{
+      if(r.t&&mbgOn()){const t=document.querySelector('.menu-head .t-name');if(t){t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash');}}
+      const dbl=Math.random()<.22;MBG.T=setTimeout(mbgBolt,dbl?180+Math.random()*200:1400+Math.random()*4200);};
+  }catch(e){MBG.run=false;}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&MBG.el&&MBG.el.classList.contains('on')&&!MBG.run&&!RM){MBG.run=true;MBG.T=setTimeout(mbgBolt,900);}});
+
 /* Kartenbilder im Menü: stärkste Karte des laufenden Spiels, sonst pro App-Start eine zufällige */
 function mTop(g){let best=null,bv=-1;((g&&g.roster)||[]).forEach(id=>{if(!DB[id])return;const v=rating(g,id);if(v>bv){bv=v;best=id;}});return best;}
 function mArt(){const A=UI.mArt||(UI.mArt={}),rnd=t=>{const L=IDS(t);return L.length?L[Math.floor(Math.random()*L.length)]:null;};['R','S','L'].forEach(t=>{if(!A[t]||!DB[A[t]])A[t]=rnd(t);});return A;}
@@ -1106,7 +1175,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 53</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 54</div></div>`);
 }
 /* ═════════════ KONTO (freiwillig, Firebase Auth) ═════════════ */
 const ACC={grant:null,user:null,p:null,busy:false,syncAt:0,pushT:null,needName:false,askedName:false,loaded:false};

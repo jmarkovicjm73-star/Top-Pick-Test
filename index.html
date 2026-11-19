@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="TOP PICK">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700;800;900&family=Russo+One&display=swap">
 <link rel="manifest" href="manifest.json">
 <style>
 :root{--bg:#0a0f1e;--p2:#0d1527;--ln:rgba(255,255,255,.08);--fg:#e8eefc;--sub:#9aa8c3;--mut:#65738c;--acc:#ff9a3c;--acc2:#ff9a3c;--sky:#7dd3fc;--ok:#34d399;--bad:#fb7185;--warn:#fbbf24}
@@ -121,6 +121,10 @@ button.chip{cursor:pointer;padding:7px 11px}
 .skb.k-obs .skd{background:linear-gradient(135deg,#12071f,#7c3aed 45%,#2e1065 65%,#c084fc)}
 .alb-lv{display:flex;gap:10px;align-items:flex-start}
 .alb-lv .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;background:rgba(255,255,255,.06)}
+.t-name,.menu-head .t-name{font-family:'Russo One','Barlow Condensed',sans-serif;font-weight:400;letter-spacing:.04em;background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#fff;line-height:1;
+ text-shadow:0 1px 0 #c9d1de,0 2px 0 #9aa4b5,0 3px 0 #6b7486,0 4px 0 #485063,0 6px 8px rgba(0,0,0,.55),0 10px 18px rgba(0,0,0,.35)}
+.menu-head .t-name{text-shadow:0 1px 0 #c9d1de,0 2px 0 #8a94a6,0 3px 0 #535c6e,0 5px 6px rgba(0,0,0,.55),0 8px 14px rgba(0,0,0,.35)}
+.t-sub{color:#8b95a7;font-family:'Barlow',sans-serif;font-weight:700;letter-spacing:.32em;text-shadow:0 1px 0 #000,0 2px 4px rgba(0,0,0,.6)}
 .langsw{display:flex;gap:6px;justify-content:center;margin:18px auto 4px;padding:4px;border:1px solid var(--ln);border-radius:999px;width:max-content;background:rgba(255,255,255,.03)}
 .langsw button{font:inherit;font-weight:800;font-size:13px;color:var(--sub);background:none;border:0;border-radius:999px;padding:7px 16px;cursor:pointer}
 .langsw button.on{background:var(--acc);color:#0a0f1e}
@@ -1019,7 +1023,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 46</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 47</div></div>`);
 }
 /* ═════════════ KARTENALBUM: Sammelstufen & Skins ═════════════ */
 const SK_KEYS=['silver','gold','obs'],SK_RANK={none:1,silver:2,gold:3,obs:4},SK_BY=['none','none','silver','gold','obs'],

@@ -189,16 +189,16 @@ button.chip{cursor:pointer;padding:7px 11px}
 #mbg.on{opacity:1}
 #mbg svg{position:absolute;inset:0;width:100%;height:100%}
 #mbg:after{content:'';position:absolute;inset:0;background:radial-gradient(75% 75% at 50% 40%,rgba(10,15,30,0) 55%,rgba(5,8,15,.85) 100%)}
-#mbg .ln{fill:none;stroke:rgba(225,236,255,.13);stroke-width:1.1;stroke-linecap:round}
-#mbg .bolt{fill:none;stroke:rgba(255,255,255,.75);stroke-width:2;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20}
-#mbg .boltH{fill:none;stroke:#a9cbff;stroke-width:6;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20;opacity:0}
+#mbg .ln{fill:none;stroke:rgba(225,236,255,.055);stroke-width:1;stroke-linecap:round}
+#mbg .bolt{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20}
+#mbg .boltH{fill:none;stroke:#a9cbff;stroke-width:7;stroke-linecap:round;stroke-dasharray:14 3000;stroke-dashoffset:20;opacity:0}
 body.mbg-on{background:transparent}
 .mcard{background:color-mix(in srgb,var(--mbg) 88%,transparent)}
 .menu-head .t-name[data-t]:after{content:attr(data-t);position:absolute;inset:0;color:transparent;-webkit-text-fill-color:transparent;text-shadow:none;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%) no-repeat;background-size:40% 100%;background-position:-60% 0;-webkit-background-clip:text;background-clip:text;pointer-events:none}
 .menu-head .t-name.flash{animation:tflash .8s ease-out}
 .menu-head .t-name.flash:after{animation:tshine .55s ease-out}
 @keyframes tshine{from{background-position:-60% 0}to{background-position:160% 0}}
-@keyframes tflash{0%{filter:none}25%{filter:drop-shadow(0 0 6px rgba(170,205,255,.85)) drop-shadow(0 0 14px rgba(120,170,255,.5))}100%{filter:none}}
+@keyframes tflash{0%{filter:none}25%{filter:drop-shadow(0 0 7px rgba(170,205,255,.95)) drop-shadow(0 0 16px rgba(120,170,255,.65))}100%{filter:none}}
 .langsw{display:flex;gap:6px;justify-content:center;margin:18px auto 4px;padding:4px;border:1px solid var(--ln);border-radius:999px;width:max-content;background:rgba(255,255,255,.03)}
 .langsw button{font:inherit;font-weight:800;font-size:13px;color:var(--sub);background:none;border:0;border-radius:999px;padding:7px 16px;cursor:pointer}
 .langsw button.on{background:var(--acc);color:#0a0f1e}
@@ -1119,9 +1119,9 @@ function mbgBuild(){
   if(MBG.el)return MBG.el;const d=document.createElement('div');d.id='mbg';d.setAttribute('aria-hidden','true');
   const L=(x)=>x.replace(/<(rect|line|circle|path)/g,'<$1 class="ln"');
   d.innerHTML=`<svg viewBox="0 0 300 650" preserveAspectRatio="xMidYMid meet"><defs>
-<filter id="mbg-gl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="mbg-gl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 <filter id="mbg-gl2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"/></filter></defs>
-<g filter="url(#mbg-gl)">${L(`<rect x="22" y="30" width="256" height="590" rx="2"/><line x1="22" y1="325" x2="278" y2="325"/><circle cx="150" cy="325" r="31"/><circle cx="150" cy="325" r="10"/>
+<g>${L(`<rect x="22" y="30" width="256" height="590" rx="2"/><line x1="22" y1="325" x2="278" y2="325"/><circle cx="150" cy="325" r="31"/><circle cx="150" cy="325" r="10"/>
 <rect x="109" y="30" width="82" height="119"/><path d="M119 149 A31 31 0 0 0 181 149"/><path d="M119 149 A31 31 0 0 1 181 149" stroke-dasharray="5 5"/><path d="M37 30 V145.6 A140 140 0 0 0 263 145.6 V30"/>
 <line x1="135" y1="55" x2="165" y2="55"/><circle cx="150" cy="63" r="5"/><path d="M129.5 63 A20.5 20.5 0 0 0 170.5 63"/>
 <rect x="109" y="501" width="82" height="119"/><path d="M119 501 A31 31 0 0 1 181 501"/><path d="M119 501 A31 31 0 0 0 181 501" stroke-dasharray="5 5"/><path d="M37 620 V504.4 A140 140 0 0 1 263 504.4 V620"/>
@@ -1130,7 +1130,7 @@ function mbgBuild(){
 <path id="mbg-bh" class="boltH" pathLength="1000" filter="url(#mbg-gl2)" d="M0 0"/><path id="mbg-bc" class="bolt" pathLength="1000" filter="url(#mbg-gl)" d="M0 0"/></svg>`;
   document.body.insertBefore(d,document.body.firstChild);MBG.el=d;
   try{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),im=x.createImageData(128,128);
-    for(let i=0;i<im.data.length;i+=4){const v=180+Math.random()*75;im.data[i]=v;im.data[i+1]=v;im.data[i+2]=255;im.data[i+3]=Math.random()<.5?Math.random()*20:0;}
+    for(let i=0;i<im.data.length;i+=4){const v=180+Math.random()*75;im.data[i]=v;im.data[i+1]=v;im.data[i+2]=255;im.data[i+3]=Math.random()<.5?Math.random()*9:0;}
     x.putImageData(im,0,0);d.style.setProperty('--mbg-grain',`url(${c.toDataURL()})`);}catch(e){}
   return d;
 }
@@ -1150,7 +1150,7 @@ function mbgBolt(){
   const op={duration:ms,easing:'cubic-bezier(.3,.1,.6,1)',fill:'forwards'};
   try{
     bc.animate([{strokeDashoffset:a0},{strokeDashoffset:a1}],op);
-    const a=bh.animate([{strokeDashoffset:a0,opacity:.55},{strokeDashoffset:a1,opacity:.3}],op);
+    const a=bh.animate([{strokeDashoffset:a0,opacity:.9},{strokeDashoffset:a1,opacity:.5}],op);
     a.onfinish=()=>{
       if(r.t&&mbgOn()){const t=document.querySelector('.menu-head .t-name');if(t){t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash');}}
       const dbl=Math.random()<.22;MBG.T=setTimeout(mbgBolt,dbl?180+Math.random()*200:1400+Math.random()*4200);};
@@ -1175,7 +1175,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 54</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 55</div></div>`);
 }
 /* ═════════════ KONTO (freiwillig, Firebase Auth) ═════════════ */
 const ACC={grant:null,user:null,p:null,busy:false,syncAt:0,pushT:null,needName:false,askedName:false,loaded:false};

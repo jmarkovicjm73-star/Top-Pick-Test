@@ -241,7 +241,7 @@ body.mbg-on{background:transparent}
 .hst::-webkit-scrollbar{display:none}
 .ib{width:38px;height:38px;border-radius:11px;border:1px solid var(--ln);background:var(--p2);cursor:pointer;font-size:16px;flex-shrink:0}
 /* Karten – Platzhalter im Stil der echten TOP-PICK-Karten */
-.card{position:relative;width:100%;aspect-ratio:5/7;border-radius:10px;border:2px solid;overflow:hidden;container-type:inline-size;color:#fff}
+.card{position:relative;width:100%;aspect-ratio:5/7;border-radius:6%/4.2857%;border:2px solid;overflow:hidden;container-type:inline-size;color:#fff}
 .card.img{border:0;background:none}
 .card.img img{width:100%;height:100%;object-fit:cover;display:block}
 .c-sal{position:absolute;left:3cqw;top:5cqw;writing-mode:vertical-rl;transform:rotate(180deg);font-size:6.5cqw;font-weight:900;letter-spacing:.08em;color:#86efac}
@@ -273,11 +273,11 @@ body.mbg-on{background:transparent}
 .card.mini .m-st span{font-size:13cqw;font-weight:900;text-align:center;border-radius:3cqw;line-height:1.25}
 .card.mini .m-st .o{background:#8fa3c6}.card.mini .m-st .d{background:#b35a5a}
 .injb{position:absolute;top:28%;left:4px;font-size:9px;font-weight:900;background:var(--bad);color:#2b0710;border-radius:5px;padding:1px 4px}
-.back{width:100%;aspect-ratio:5/7;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:repeating-linear-gradient(45deg,#14203d 0 7px,#101a33 7px 14px);display:flex;align-items:center;justify-content:center;font-size:24px}
+.back{width:100%;aspect-ratio:5/7;border-radius:6%/4.2857%;border:2px solid rgba(255,255,255,.12);background:repeating-linear-gradient(45deg,#14203d 0 7px,#101a33 7px 14px);display:flex;align-items:center;justify-content:center;font-size:24px}
 .back.lgd{border-color:rgba(247,168,27,.6);background:repeating-linear-gradient(45deg,#3a2508 0 7px,#2b1b06 7px 14px)}
 .grid4{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 @media (min-width:520px){.grid4{grid-template-columns:repeat(4,1fr)}}
-.cw{border-radius:12px;display:block;width:100%}
+.cw{border-radius:6%/4.2857%;display:block;width:100%}
 .cw.sel{outline:2.5px solid var(--acc);outline-offset:1px;cursor:pointer;animation:pa 1.6s ease-in-out infinite}
 .cw.dis{opacity:.35}
 .cw.tgt{outline:2.5px solid var(--bad);outline-offset:1px;cursor:pointer;animation:pr 1.6s ease-in-out infinite}
@@ -349,7 +349,7 @@ body.mm .stb{display:flex;position:absolute;top:-5px;right:-5px;width:18px;heigh
 .stb.w{background:var(--ok)}.stb.l{background:var(--bad)}
 
 .hl{text-align:center;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);position:relative;z-index:1;margin:2px 0}
-.empty{width:100%;aspect-ratio:5/7;border-radius:12px;border:2px dashed rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--mut)}
+.empty{width:100%;aspect-ratio:5/7;border-radius:6%/4.2857%;border:2px dashed rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--mut)}
 .scoreb{display:flex;align-items:center;justify-content:space-between;background:var(--p2);border:1px solid var(--ln);border-radius:14px;padding:10px 12px;gap:8px}
 .scoreb .sc{font-size:28px;font-weight:900;min-width:24px;text-align:center}
 .hint{position:fixed;left:0;right:0;bottom:0;z-index:15;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:rgba(13,21,39,.97);border-top:1px solid var(--ln)}
@@ -1218,7 +1218,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 62</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 63</div></div>`);
 }
 /* ═════════════ KONTO (freiwillig, Firebase Auth) ═════════════ */
 const ACC={grant:null,user:null,p:null,busy:false,syncAt:0,pushT:null,needName:false,askedName:false,loaded:false};

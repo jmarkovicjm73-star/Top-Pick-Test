@@ -211,6 +211,10 @@ body.mbg-on{background:transparent}
 .inst-step b.n{width:22px;height:22px;border-radius:50%;background:var(--acc);color:#2a1300;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .inst-step svg{width:20px;height:20px;color:#60a5fa;flex-shrink:0}
 .inst-no{display:block;width:100%;background:none;border:0;color:var(--mut);font:inherit;font-size:13px;font-weight:700;margin-top:10px;cursor:pointer;padding:6px}
+.mcard .mc-t{font-size:27px;line-height:1.05;font-weight:900}
+.mcard .mc-s{margin-top:4px}
+.mcard{min-height:92px;display:flex;align-items:center}.mcard.live{display:block}
+.mtile{padding:16px 14px}.mtile .mc-t{font-size:20px}.mtile .mc-s{margin-top:3px}
 .langsw{display:flex;gap:6px;justify-content:center;margin:18px auto 4px;padding:4px;border:1px solid var(--ln);border-radius:999px;width:max-content;background:rgba(255,255,255,.03)}
 .langsw button{font:inherit;font-weight:800;font-size:13px;color:var(--sub);background:none;border:0;border-radius:999px;padding:7px 16px;cursor:pointer}
 .langsw button.on{background:var(--acc);color:#0a0f1e}
@@ -1102,11 +1106,11 @@ function vMenu(){
   UI.albNew=null;const sl=SLOTS[0],rm=ROOMS[0],A=mArt(),st=albStats(),ur=UI.upRun;
   const cc=sl&&(!rm||(sl.at||0)>=(rm.at||0))?{t:'s',m:sl}:(rm?{t:'r',m:rm}:null);
   const card=(o)=>`<div class="mcard${o.live?' live':''}" style="--mc:${o.c};--mbg:${o.bg};--mbd:${o.bd}" onclick="${o.fn}">${o.art?`<div class="mc-art">${o.art}</div>`:''}<div class="mc-fade"></div>
-<div class="mc-in">${o.live?'<div class="mc-live">● WEITERSPIELEN</div>':''}<div class="mc-row"><div class="mc-ic">${o.ic}</div><div><div class="mc-t">${o.t}</div><div class="mc-s">${o.s}</div></div></div>
+<div class="mc-in">${o.live?'<div class="mc-live">● WEITERSPIELEN</div>':''}<div class="mc-row"><div><div class="mc-t">${o.t}</div><div class="mc-s">${o.s}</div></div></div>
 ${o.live?`<div class="mc-go">${o.pr!=null?`<div class="mc-bar"><i style="width:${Math.max(4,Math.min(100,Math.round(o.pr*100)))}%"></i></div>`:''}<button class="mc-btn" onclick="event.stopPropagation();${o.go}">Weiter ▸</button></div>`:''}</div></div>`;
   const car=cc?(cc.t==='s'?{s:`${esc(cc.m.name)} · Saison ${cc.m.season} · 💍 ${cc.m.rings}`,go:`loadSlot('${cc.m.id}')`,pr:cc.m.mds?cc.m.md/cc.m.mds:null,art:cc.m.top}
       :{s:`Raum ${esc(cc.m.code)} · ${cc.m.role==='host'?'Host':esc(cc.m.name||'Gast')}`,go:`roomGo('${cc.m.code}')`,pr:null,art:cc.m.top}):null;
-  const tile=(ic,col,t,sub,fn,badge)=>`<button class="mtile" onclick="${fn}">${badge?`<span class="mbadge">${badge}</span>`:''}<div class="mc-ic" style="--mc:${col}">${ic}</div><div class="mc-t">${t}</div><div class="mc-s">${sub}</div></button>`;
+  const tile=(ic,col,t,sub,fn,badge)=>`<button class="mtile" onclick="${fn}">${badge?`<span class="mbadge">${badge}</span>`:''}<div class="mc-t">${t}</div><div class="mc-s">${sub}</div></button>`;
   app(`<div class="mtop"><button class="mgear" onclick="screen('settings')" aria-label="Einstellungen">${icSVG('gear')}</button>${accChipHTML()}</div>
 <div class="menu-head">${logoHTML()}<div class="t-name" data-t="TOP PICK">TOP PICK</div><div class="t-sub">BASKETBALL MANAGER</div></div>
 ${card({c:'#f97316',bg:'#1d1510',bd:'#7a3e12',ic:'🏀',t:'GM Career',s:car?car.s:'Mehrere Saisons · offline oder online',fn:'careerSheet()',live:!!car,go:car?car.go:'',pr:car?car.pr:null,art:mArtHTML(car&&car.art&&DB[car.art]?car.art:A.R)})}
@@ -1206,7 +1210,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 59</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 60</div></div>`);
 }
 /* ═════════════ KONTO (freiwillig, Firebase Auth) ═════════════ */
 const ACC={grant:null,user:null,p:null,busy:false,syncAt:0,pushT:null,needName:false,askedName:false,loaded:false};

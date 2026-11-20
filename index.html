@@ -1218,7 +1218,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 63</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 64</div></div>`);
 }
 /* ═════════════ KONTO (freiwillig, Firebase Auth) ═════════════ */
 const ACC={grant:null,user:null,p:null,busy:false,syncAt:0,pushT:null,needName:false,askedName:false,loaded:false};
@@ -1945,7 +1945,7 @@ function lotAnim(gi,n,rem,done){
   const T=TEAMS[G_(gi).team],ar=$('arena');
   arClear();UI.arDone=false;if(UI.lp){UI.lp.alive=false;UI.lp=null;}
   ar.innerHTML=`<div class="ar-bg"></div>
-<div class="ar-top"><div class="kick">Draft-Lotterie</div><div class="h2" style="margin-top:4px">Pick ${n}</div><div class="s mut">${rem.length} Kugel${rem.length>1?'n':''} in der Trommel</div></div>
+<div class="ar-top"><div class="kick">Draft-Lotterie</div><div class="h2" style="margin-top:4px">Pick ${n}</div></div>
 <div class="lot"><div class="lot-drum phys" id="lot-drum"><canvas id="lot-cv" style="position:absolute;inset:0;width:100%;height:100%"></canvas></div><div class="lot-chute"></div><div class="lot-out" id="lot-out" style="background:${T.col};color:${T.tx}">${T.sh}</div></div>
 <div class="ar-res" id="lot-res" style="background:${T.col}22;color:${T.col}"><div class="row" style="justify-content:center;gap:10px">${badge(gi)}<div style="text-align:left"><div>Pick ${n}: ${me?'Du!':esc(G_(gi).name)}</div><div class="s mut" style="font-weight:700">${esc(T.name)}</div></div></div></div>
 <div class="ar-btn" id="lot-btn"><button class="btn" onclick="lotDone()">${me?'Rookie wählen':'Weiter'}</button></div>

@@ -1239,7 +1239,7 @@ ${audSettingsHTML()}
 <div class="panel"><div class="lbl">Spielstände</div><div class="s mut mb">${SLOTS.length} offline · ${ROOMS.length} online</div><button class="btn sec" onclick="screen('saves')">💾 Spielstände verwalten</button></div>
 ${cardsPanelHTML()}
 ${appPanelHTML()}
-<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 68</div></div>`);
+<div class="panel"><div class="lbl">Info</div><div class="s mut" style="line-height:1.6">TOP PICK · Basketball Manager<br>Version 1.0 · Stand 69</div></div>`);
 }
 /* ═════════════ KONTO (freiwillig, Firebase Auth) ═════════════ */
 const ACC={grant:null,user:null,p:null,busy:false,syncAt:0,pushT:null,needName:false,askedName:false,loaded:false};
@@ -1742,7 +1742,7 @@ function confetti(n){
 let introT=null;
 function introFor(prev,ph){
   if(ST&&ST.mode==='jb'){if(prev===ph)return null;const j=ST.jb||{};if(ph==='jb_deal')return{k:'Jump Ball',t:'Willkommen, Manager',s:''};if(ph==='jb_rk')return{k:'Jump Ball',t:'Rookie-Draft',s:''};if(ph==='hub')return{k:'Jump Ball · Best of 3',t:'Spiel '+(j.game||1),s:j.gw?`Stand ${j.gw[ME()]||0} : ${j.gw[1-ME()]||0}`:''};return null;}
-  if(ph==='dice'&&!ST.order.length){const k=Math.max(0,ME());return{k:'GM Career',t:'Willkommen',s:'im GM Career Modus',next:{k:'Preseason',t:'Willkommen, GM',s:esc(TEAMS[G_(k).team].name)}};}
+  if(ph==='dice'&&!ST.order.length){const k=Math.max(0,ME());return{k:'Preseason',t:'Willkommen, GM',s:esc(TEAMS[G_(k).team].name)};}
   if(prev===ph)return null;
   if(ph==='hub'){
     const md=ST.sched[ST.md],pm=ST.sched[ST.md-1];if(!md||(pm&&pm.stage===md.stage))return null;
